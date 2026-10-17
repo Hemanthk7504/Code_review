@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}Settings · CodeSentinel{% endblock %}
+{% block breadcrumb %}Settings{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width: 960px; margin: 0 auto;">
+  <div style="margin-bottom: var(--space-xl);">
+    <h1 style="font-size: var(--text-2xl); font-weight: 800;">Platform Settings & Engine Configuration</h1>
+    <p style="color: var(--color-text-secondary); margin-top: 4px;">
+      Manage LLM cognitive models, verification gates, and GitHub webhook secrets.
+    </p>
+  </div>
+
+  <!-- LLM & Cognitive Multi-Agent Config -->
+  <div class="card" style="margin-bottom: var(--space-xl);">
+    <div class="card-header">
+      <h3 class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+        <span>LLM Multi-Agent Provider & Model</span>
+      </h3>
+      <span class="badge badge-verified">Server Enforced</span>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);" class="responsive-grid-2">
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">Default LLM Model</label>
+        <input type="text" class="form-control" value="nvidia/nemotron-3.5-lightning-30b-a3b" readonly style="opacity: 0.85;">
+      </div>
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">LLM Provider Endpoint</label>
+        <input type="text" class="form-control" value="https://integrate.api.nvidia.com/v1" readonly style="opacity: 0.85;">
+      </div>
+    </div>
+    <small style="color: var(--color-text-muted);">
+      Server environment variables <code>LLM_BASE_URL</code>, <code>LLM_API_KEY</code>, and <code>LLM_MODEL</code> control model execution. Compatible with any OpenAI-standard endpoint.
+    </small>
+  </div>
+
+  <!-- Verification Gate & Risk Engine Thresholds -->
+  <div class="card" style="margin-bottom: var(--space-xl);">
+    <div class="card-header">
+      <h3 class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+        <span>Risk-Adaptive & Verification Gate Parameters</span>
+      </h3>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);" class="responsive-grid-3">
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">Base Verification Threshold</label>
+        <input type="text" class="form-control" value="0.50 (Adaptive up to 0.95)" readonly style="opacity: 0.85;">
+      </div>
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">Min Resolution Ratio</label>
+        <input type="text" class="form-control" value="1.0 (100% of issues)" readonly style="opacity: 0.85;">
+      </div>
+      <div class="form-group" style="margin: 0;">
+        <label class="form-label">Max Allowed New Defects</label>
+        <input type="text" class="form-control" value="0 (Strict Zero-Regression)" readonly style="opacity: 0.85;">
+      </div>
+    </div>
+  </div>
+
+  <!-- GitHub Webhook & CI Secret Setup -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+        <span>GitHub Webhook & Actions Setup</span>
+      </h3>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label">Webhook Endpoint URL</label>
+      <div style="display: flex; gap: var(--space-xs);">
+        <input type="text" id="webhook-url-input" class="form-control" value="/api/v1/github/webhook" readonly>
+        <button class="btn btn-secondary btn-sm" onclick="copyWebhookUrl()">Copy URL</button>
+      </div>
+    </div>
+
+    <div class="form-group" style="margin-top: var(--space-md);">
+      <label class="form-label">HMAC SHA-256 Webhook Secret</label>
+      <div style="display: flex; gap: var(--space-xs);">
+        <input type="password" id="webhook-secret-input" class="form-control" value="codesentinel-webhook-secret-production" readonly>
+        <button class="btn btn-secondary btn-sm" onclick="copyWebhookSecret()">Copy Secret</button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const webhookInput = document.getElementById('webhook-url-input');
+  if (webhookInput) {
+    webhookInput.value = window.location.origin + '/api/v1/github/webhook';
+  }
+});
+
+function copyWebhookUrl() {
+  const url = document.getElementById('webhook-url-input').value;
+  navigator.clipboard.writeText(url);
+  App.showToast('Copied', 'Webhook URL copied to clipboard.', 'success');
+}
+
+function copyWebhookSecret() {
+  const sec = document.getElementById('webhook-secret-input').value;
+  navigator.clipboard.writeText(sec);
+  App.showToast('Copied', 'Webhook secret copied to clipboard.', 'success');
+}
+</script>
+<style>
+@media(max-width: 768px) {
+  .responsive-grid-2, .responsive-grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+{% endblock %}

@@ -1,0 +1,468 @@
+{% extends "base.html" %}
+
+{% block title %}Review Results · CodeSentinel{% endblock %}
+{% block breadcrumb %}Review Results{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <!-- Results Executive Header Card -->
+  <div class="card" style="margin-bottom: var(--space-xl);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-xl);">
+      <!-- Left: Circular Gauge -->
+      <div style="display: flex; align-items: center; gap: var(--space-xl);">
+        <div id="overview-risk-gauge"></div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <h2 style="font-size: var(--text-2xl); font-weight: 800;">Automated Security & Risk Audit</h2>
+            <span id="results-ai-badge" class="badge badge-verified">AI Cognitive</span>
+          </div>
+          <p style="font-size: var(--text-sm); color: var(--color-text-secondary); max-width: 520px;">
+            Cross-corroborated static tool evidence with skeptical self-verification and risk-adaptive scoring.
+          </p>
+        </div>
+      </div>
+
+      <!-- Right: Metric Count Badges -->
+      <div style="display: flex; gap: var(--space-md); flex-wrap: wrap;">
+        <div class="stat-card" style="padding: 12px 18px; min-width: 130px; text-align: center;">
+          <div class="stat-value" id="stat-verified-findings" style="color: var(--color-verified);">0</div>
+          <div class="stat-label">Verified Issues</div>
+        </div>
+        <div class="stat-card" style="padding: 12px 18px; min-width: 130px; text-align: center;">
+          <div class="stat-value" id="stat-uncertain-findings" style="color: var(--color-medium);">0</div>
+          <div class="stat-label">Uncertain / Low Conf</div>
+        </div>
+        <div class="stat-card" style="padding: 12px 18px; min-width: 130px; text-align: center;">
+          <div class="stat-value" id="stat-rejected-findings" style="color: var(--color-rejected);">0</div>
+          <div class="stat-label">Refuted False Positives</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Export & Revision Navigation Strip -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-lg); padding-top: var(--space-md); border-top: 1px solid var(--color-border-subtle); flex-wrap: wrap; gap: var(--space-xs);">
+      <div style="font-size: var(--text-xs); color: var(--color-text-muted);">
+        Total Analyzed Findings: <strong id="stat-total-findings">0</strong>
+      </div>
+      <div style="display: flex; gap: var(--space-xs); flex-wrap: wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="ReviewController.exportSarif()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Export SARIF 2.1.0</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="ReviewController.exportMarkdown()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path></svg>
+          <span>Export Markdown</span>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="ReviewController.openRemediatedModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>⚡ View Remediated Code</span>
+        </button>
+        <a href="/revisions" class="btn btn-secondary btn-sm">
+          <span>Inspect Side-by-Side Diff →</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Auto-Revision Loop Executive Summary Banner (Appears when Full Loop was run or revisions exist) -->
+  <div id="auto-revise-banner" class="card" style="display: none; margin-bottom: var(--space-xl); border-left: 4px solid var(--color-verified); background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-sunken) 100%);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md);">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+          <span style="font-size: 22px;">🤖</span>
+          <h3 style="font-size: var(--text-lg); font-weight: 800; margin: 0;">Auto-Revision (Full Loop) Results</h3>
+          <span id="banner-val-badge" class="badge badge-verified">Validation Gate Passed</span>
+          <span id="banner-notes-badge" class="badge badge-neutral" style="font-size: 11px;"></span>
+        </div>
+        <p id="banner-summary-desc" style="font-size: var(--text-xs); color: var(--color-text-secondary); margin: 0; max-width: 650px;">
+          Autonomous remediation applied verified fixes and revalidated the code against regressions.
+        </p>
+      </div>
+      <div style="display: flex; gap: var(--space-xs); flex-wrap: wrap;">
+        <button class="btn btn-primary btn-sm" onclick="ReviewController.switchResultsTab('revisions')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+          <span>⚡ Inspect Patches & Diff</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="ReviewController.openRemediatedModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span>📋 Copy Revised Code</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="ReviewController.downloadRemediatedCode()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>📥 Download File</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Primary Results Tab Navigation -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-lg); flex-wrap: wrap; gap: var(--space-sm);">
+    <div class="tabs-nav">
+      <button class="tab-item active" id="tab-btn-findings" onclick="ReviewController.switchResultsTab('findings')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        <span>Audit Findings & Defects</span>
+        <span class="badge badge-neutral" id="tab-findings-count" style="font-size: 11px; padding: 2px 7px;">0</span>
+      </button>
+      <button class="tab-item" id="tab-btn-revisions" onclick="ReviewController.switchResultsTab('revisions')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>
+        <span>⚡ Auto-Revision & Patches</span>
+        <span class="badge badge-verified" id="tab-revisions-count" style="font-size: 11px; padding: 2px 7px;">0</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- TAB 1: Findings and Defects Content -->
+  <div id="findings-tab-content">
+    <!-- Findings Filter Toolbar -->
+    <div class="table-toolbar">
+      <div class="filter-group">
+        <!-- Search Input -->
+        <input type="text" class="form-control" style="width: 240px; padding: 0.4rem 0.75rem; font-size: var(--text-xs);"
+               placeholder="Search findings or rule ID..."
+               oninput="ReviewController.setFilter('search', this.value)">
+
+        <!-- Severity Filter -->
+        <select class="form-select" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem; font-size: var(--text-xs);"
+                onchange="ReviewController.setFilter('severity', this.value)">
+          <option value="all">All Severities</option>
+          <option value="critical">Critical</option>
+          <option value="high">High</option>
+          <option value="medium">Medium</option>
+          <option value="low">Low</option>
+        </select>
+
+        <!-- Category Filter -->
+        <select class="form-select" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem; font-size: var(--text-xs);"
+                onchange="ReviewController.setFilter('category', this.value)">
+          <option value="all">All Categories</option>
+          <option value="security">Security</option>
+          <option value="bug">Logic Bug</option>
+          <option value="quality">Code Quality</option>
+          <option value="refactor">Refactor</option>
+          <option value="performance">Performance</option>
+        </select>
+
+        <!-- Verification Status -->
+        <select class="form-select" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem; font-size: var(--text-xs);"
+                onchange="ReviewController.setFilter('verification', this.value)">
+          <option value="all">All Statuses</option>
+          <option value="verified">Verified Only</option>
+          <option value="uncertain">Uncertain</option>
+          <option value="rejected">Rejected</option>
+        </select>
+
+        <!-- Sort -->
+        <select class="form-select" style="width: auto; padding: 0.4rem 2rem 0.4rem 0.75rem; font-size: var(--text-xs);"
+                onchange="ReviewController.setFilter('sortBy', this.value)">
+          <option value="risk_desc">Highest Risk First</option>
+          <option value="risk_asc">Lowest Risk First</option>
+          <option value="line">Line Number</option>
+        </select>
+      </div>
+
+      <!-- Toggle Show Rejected Findings -->
+      <div>
+        <button class="btn btn-secondary btn-sm" id="toggle-rejected-btn" onclick="ReviewController.toggleRejected()">
+          <span>Show Refuted (False Positives)</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Findings Data Table -->
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width: 100px;">Severity</th>
+            <th>Defect & Taxonomy</th>
+            <th style="width: 150px;">Location</th>
+            <th style="width: 120px;">Verification</th>
+            <th>Corroborating Sources</th>
+            <th style="width: 110px;">Risk Score</th>
+            <th style="width: 40px;"></th>
+          </tr>
+        </thead>
+        <tbody id="findings-table-body">
+          <!-- Populated via review.js -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- TAB 2: Auto-Revision & Patches Content -->
+  <div id="revisions-tab-content" style="display: none;">
+    <!-- Multi-file selector bar (shown if >1 file) -->
+    <div id="results-revisions-file-bar" style="display: none; margin-bottom: var(--space-md); align-items: center; gap: 8px;">
+      <label class="form-label" style="margin: 0; font-size: var(--text-xs);">Target Revision File:</label>
+      <select id="results-revisions-file-select" class="form-select form-select-sm" style="width: auto; min-width: 220px; font-weight: 600;" onchange="ReviewController.switchRevisionOutcome(this.value)"></select>
+    </div>
+
+    <!-- Validation Gate Outcome Card -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+      <div class="card-header" style="flex-wrap: wrap; gap: 12px;">
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px; flex-wrap: wrap;">
+            <h3 style="font-size: var(--text-lg); font-weight: 700; margin: 0;">Autonomous Remediation & Validation Gate</h3>
+            <span id="tab-val-badge" class="badge badge-verified">Validation Gate Passed</span>
+          </div>
+          <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin: 0;">
+            Target File: <code id="tab-val-filepath" style="font-weight: 600;"></code> · Remediation verified against new defect regressions.
+          </p>
+        </div>
+        <div style="display: flex; gap: var(--space-xs); flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="ReviewController.copyActiveRevisedCode()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            <span>Copy Revised Code</span>
+          </button>
+          <button class="btn btn-primary btn-sm" onclick="ReviewController.downloadActivePatch()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            <span>Download Patch</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Metrics Grid -->
+      <div class="stats-grid" style="margin: var(--space-md) 0; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+        <div class="stat-card" style="padding: 14px;">
+          <span class="stat-label">Issues Resolved</span>
+          <div class="stat-value" id="tab-val-resolved" style="color: var(--color-verified); font-size: var(--text-2xl);">0 / 0</div>
+        </div>
+        <div class="stat-card" style="padding: 14px;">
+          <span class="stat-label">New Regressions</span>
+          <div class="stat-value" id="tab-val-new-issues" style="font-size: var(--text-2xl);">0</div>
+        </div>
+        <div class="stat-card" style="padding: 14px;">
+          <span class="stat-label">Risk Reduction</span>
+          <div class="stat-value" id="tab-val-risk-delta" style="font-size: var(--text-2xl);">0%</div>
+          <div style="font-size: var(--text-2xs); color: var(--color-text-muted); margin-top: 4px;">
+            <span id="tab-val-risk-before">0</span> → <span id="tab-val-risk-after">0</span>
+          </div>
+        </div>
+        <div class="stat-card" style="padding: 14px;">
+          <span class="stat-label">AST Verification</span>
+          <div id="tab-val-syntax" style="margin-top: 8px;"></div>
+        </div>
+      </div>
+
+      <!-- Automated Validation Gate Diagnostics -->
+      <div style="margin-top: var(--space-md); padding: var(--space-md); background: var(--color-surface-sunken); border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+        <span class="form-label" style="font-size: var(--text-xs); font-weight: 700;">Validation Gate Diagnostics & Engine Notes</span>
+        <ul id="tab-val-reasons-list" style="padding-left: var(--space-md); margin-top: 6px;"></ul>
+      </div>
+    </div>
+
+    <!-- Modifications & Fix Rationale -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+      <div class="card-header">
+        <h3 class="card-title">Detailed Modifications & Fix Rationale</h3>
+      </div>
+      <div id="tab-changes-container"></div>
+    </div>
+
+    <!-- Companion Unit Test (pytest) -->
+    <div class="card" id="tab-test-wrapper" style="margin-bottom: var(--space-xl); display: none;">
+      <div class="card-header" style="flex-wrap: wrap; gap: 8px;">
+        <h3 class="card-title">🧪 Generated Companion Unit Test (pytest)</h3>
+        <button class="btn btn-secondary btn-sm" onclick="ReviewController.copyActiveTestCode()">Copy Test Code</button>
+      </div>
+      <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: 12px;">
+        Autonomous unit tests asserting that the identified security and logic vulnerabilities are resolved without regressions.
+      </p>
+      <pre id="tab-test-code" style="color: #93C5FD; max-height: 280px;"></pre>
+    </div>
+
+    <!-- Side-by-Side & Unified Diff Viewer -->
+    <div class="diff-card" style="margin-bottom: var(--space-xl);">
+      <div class="diff-header">
+        <div style="font-weight: 600; font-size: var(--text-sm); display: flex; align-items: center; gap: 8px;">
+          <span>Unified & Side-by-Side Code Diff</span>
+        </div>
+        <div style="display: flex; gap: 2px; background: var(--color-surface); padding: 2px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+          <button class="btn btn-ghost btn-sm results-diff-mode-btn active" data-mode="side-by-side" onclick="ReviewController.setDiffViewMode('side-by-side')">Side-by-Side</button>
+          <button class="btn btn-ghost btn-sm results-diff-mode-btn" data-mode="unified" onclick="ReviewController.setDiffViewMode('unified')">Unified</button>
+        </div>
+      </div>
+      <div class="diff-content-wrapper" id="results-diff-viewport"></div>
+    </div>
+
+    <!-- Remediated Full Code Panel -->
+    <div class="card" style="margin-bottom: var(--space-xl);">
+      <div class="card-header" style="flex-wrap: wrap; gap: 8px;">
+        <div>
+          <h3 class="card-title">📄 Full Remediated Source Code</h3>
+          <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 4px;">Complete clean Python source with all verified security and code quality remediations integrated.</p>
+        </div>
+        <div style="display: flex; gap: var(--space-xs); flex-wrap: wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="ReviewController.copyActiveRevisedCode()">📋 Copy All Code</button>
+          <button class="btn btn-primary btn-sm" onclick="ReviewController.downloadActiveRevisedCode()">📥 Download Remediated File</button>
+        </div>
+      </div>
+      <div style="background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md); overflow-x: auto;">
+        <pre id="results-remediated-code-viewport" style="margin: 0; font-family: monospace; font-size: var(--text-xs); line-height: 1.6; white-space: pre-wrap; word-break: break-word; color: var(--color-text);"></pre>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Finding Inspection Side Drawer -->
+<div class="drawer-backdrop" id="finding-drawer-backdrop" onclick="if(event.target===this) ReviewController.closeFindingDrawer()">
+  <div class="side-drawer" role="dialog" aria-modal="true">
+    <div class="drawer-header">
+      <div>
+        <div style="display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap;">
+          <span id="drawer-severity" class="badge"></span>
+          <span id="drawer-verification" class="badge"></span>
+          <span id="drawer-remediated-badge" class="badge badge-verified" style="display: none;">⚡ Remediated in Patch</span>
+          <code id="drawer-location" style="font-size: var(--text-xs);"></code>
+        </div>
+        <h2 id="drawer-title" style="font-size: var(--text-lg); font-weight: 700;"></h2>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-icon-only" onclick="ReviewController.closeFindingDrawer()" title="Close Drawer (Esc)">✕</button>
+    </div>
+
+    <div class="drawer-body">
+      <!-- Risk & Priority Card -->
+      <div style="display: flex; gap: var(--space-md); padding: var(--space-md); background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-radius: var(--radius-md);">
+        <div>
+          <small class="form-label">Calculated Risk</small>
+          <div id="drawer-risk-score" style="font-size: var(--text-xl); font-weight: 800; color: var(--color-primary);"></div>
+        </div>
+        <div style="border-left: 1px solid var(--color-border); padding-left: var(--space-md);">
+          <small class="form-label">Remediation Effort</small>
+          <div id="drawer-effort" style="font-size: var(--text-sm); font-weight: 600; color: var(--color-text);"></div>
+        </div>
+        <div style="border-left: 1px solid var(--color-border); padding-left: var(--space-md);">
+          <small class="form-label">Blast Radius</small>
+          <div id="drawer-blast" style="font-size: var(--text-sm); font-weight: 600; color: var(--color-text);"></div>
+        </div>
+      </div>
+
+      <!-- Description & Recommendation -->
+      <div class="drawer-section">
+        <span class="drawer-section-title">Description</span>
+        <p id="drawer-desc" style="font-size: var(--text-sm);"></p>
+      </div>
+
+      <div class="drawer-section">
+        <span class="drawer-section-title">Recommendation</span>
+        <div style="background: var(--color-primary-light); border-left: 3px solid var(--color-primary); padding: var(--space-sm); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: var(--text-sm); color: var(--color-text);" id="drawer-rec"></div>
+      </div>
+
+      <!-- Problematic Code Snippet (Current) -->
+      <div class="drawer-section" id="drawer-snippet-container">
+        <span class="drawer-section-title" style="color: var(--color-critical-text);">Detected Defect (Original Line)</span>
+        <div class="code-snippet-box" id="drawer-snippet-box" style="margin-top: 6px; background: rgba(239, 68, 68, 0.08); border-left: 3px solid var(--color-critical);"></div>
+      </div>
+
+      <!-- Proposed Fix / Remediated Code -->
+      <div class="drawer-section" id="drawer-fix-container" style="display: none;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px;">
+          <span class="drawer-section-title" style="margin: 0; color: var(--color-verified-text);">⚡ Proposed Fix / Remediated Code</span>
+          <button class="btn btn-secondary btn-sm" style="padding: 2px 8px; font-size: var(--text-2xs);" onclick="ReviewController.copyProposedFix()">
+            <span>📋 Copy Fix</span>
+          </button>
+        </div>
+        <div class="code-snippet-box" id="drawer-fix-box" style="background: rgba(16, 185, 129, 0.08); border-left: 3px solid var(--color-verified);"></div>
+      </div>
+
+      <!-- Intelligent Guidance / Remediation Architecture (Shown when no inline fix string) -->
+      <div class="drawer-section" id="drawer-guidance-container" style="display: none;">
+        <span class="drawer-section-title" style="color: var(--color-primary);">💡 Recommended Remediation Architecture</span>
+        <div style="background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-left: 3px solid var(--color-primary); padding: var(--space-sm); border-radius: 0 var(--radius-sm) var(--radius-sm) 0; font-size: var(--text-xs); color: var(--color-text);">
+          <div id="drawer-guidance-text" style="margin-bottom: 6px; font-weight: 500;"></div>
+          <pre id="drawer-guidance-code" style="background: var(--color-surface); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--color-border); font-family: monospace; font-size: 11px; white-space: pre-wrap; margin: 0; color: var(--color-text);"></pre>
+        </div>
+      </div>
+
+      <!-- Verification Panel -->
+      <div class="drawer-section" style="background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md);">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <span class="drawer-section-title" style="margin: 0;">Self-Verification Verdict</span>
+          <span id="drawer-conf-text" style="font-size: var(--text-xs); font-weight: 600; color: var(--color-verified);"></span>
+        </div>
+        <div style="height: 4px; background: var(--color-border); border-radius: var(--radius-full); margin-bottom: 10px; overflow: hidden;">
+          <div id="drawer-conf-bar" style="height: 100%; background: var(--color-verified); transition: width 400ms ease;"></div>
+        </div>
+        <div id="drawer-ver-reason" style="font-size: var(--text-xs); color: var(--color-text-secondary); font-style: italic;"></div>
+      </div>
+
+      <!-- Corroborating Sources -->
+      <div class="drawer-section">
+        <span class="drawer-section-title">Corroborating Pipelines</span>
+        <div id="drawer-sources" style="display: flex; gap: 6px; flex-wrap: wrap;"></div>
+      </div>
+
+      <!-- Evidence List -->
+      <div class="drawer-section">
+        <span class="drawer-section-title">Static & AI Evidence</span>
+        <ul id="drawer-evidence" style="padding-left: var(--space-md);"></ul>
+      </div>
+
+      <!-- Taxonomy Tags -->
+      <div class="drawer-section" style="border-top: 1px solid var(--color-border); padding-top: var(--space-md);">
+        <span class="drawer-section-title">Taxonomy Classification</span>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-xs); font-size: var(--text-xs); margin-top: 6px;">
+          <div>CWE Standard: <code id="drawer-cwe"></code></div>
+          <div>OWASP Top 10: <span id="drawer-owasp" style="font-weight: 500;"></span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Remediated Code Full Modal -->
+<div class="drawer-backdrop" id="remediated-code-modal" onclick="if(event.target===this) ReviewController.closeRemediatedModal()">
+  <div class="card" style="width: 900px; max-width: 92vw; max-height: 85vh; margin: 5vh auto; background: var(--color-surface-elevated); border: 1px solid var(--color-border-strong); box-shadow: var(--shadow-elevated); display: flex; flex-direction: column;">
+    <!-- Modal Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: var(--space-md); border-bottom: 1px solid var(--color-border);">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3 style="font-size: var(--text-lg); font-weight: 700; margin: 0;">⚡ Remediated Code Preview</h3>
+          <span class="badge badge-verified">All Verified Fixes Applied</span>
+        </div>
+        <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 4px;">
+          View and copy the updated Python code with security vulnerabilities, bare exceptions, and bugs resolved.
+        </p>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-icon-only" onclick="ReviewController.closeRemediatedModal()">✕</button>
+    </div>
+
+    <!-- File Selector / Toolbar -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin: var(--space-md) 0; flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <label class="form-label" style="margin: 0; font-size: var(--text-xs);">Target File:</label>
+        <select id="remediated-modal-file-select" class="form-select form-select-sm" style="width: auto; min-width: 180px; font-weight: 600;" onchange="ReviewController.switchRemediatedFile(this.value)">
+        </select>
+      </div>
+
+      <div style="display: flex; gap: var(--space-xs); flex-wrap: wrap;">
+        <button class="btn btn-secondary btn-sm" onclick="ReviewController.copyRemediatedCode()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span>📋 Copy Updated Code</span>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="ReviewController.downloadRemediatedCode()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>📥 Download Updated File</span>
+        </button>
+        <a href="/revisions" class="btn btn-secondary btn-sm">
+          <span>Inspect Side-by-Side Diff →</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Code Workspace Container -->
+    <div style="flex: 1; overflow-y: auto; background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: var(--space-md);">
+      <pre id="remediated-modal-code" style="margin: 0; font-family: monospace; font-size: var(--text-xs); line-height: 1.6; color: var(--color-text); white-space: pre-wrap; word-break: break-word;"></pre>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/review.js?v=2.3.0"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  ReviewController.initResults();
+});
+</script>
+{% endblock %}

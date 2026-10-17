@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}Team & Access (Preview) · CodeSentinel{% endblock %}
+{% block breadcrumb %}Team & Access{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width: 1200px; margin: 0 auto;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+        <h1 style="font-size: var(--text-2xl); font-weight: 800;">Team & Access Governance</h1>
+        <span class="badge badge-neutral" style="font-size: 11px;">Enterprise Preview</span>
+      </div>
+      <p style="color: var(--color-text-secondary); margin-top: 4px;">
+        Role-based access control (Admin, Reviewer, Viewer) and enterprise SSO authentication.
+      </p>
+    </div>
+
+    <button class="btn btn-primary" onclick="App.showToast('Invite Member', 'Member invitation dialog preview.', 'info')">
+      <span>+ Invite Member</span>
+    </button>
+  </div>
+
+  <!-- SSO / SAML Configuration Card -->
+  <div class="card" style="margin-bottom: var(--space-xl); border-color: var(--color-primary-glow);">
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md);">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <h3 class="card-title" style="margin: 0;">Single Sign-On (SSO / SAML 2.0)</h3>
+          <span class="badge badge-neutral">SAML & OIDC</span>
+        </div>
+        <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 4px;">
+          Enforce centralized authentication via Okta, Microsoft Entra ID (Azure AD), Google Workspace, or PingFederate.
+        </p>
+      </div>
+
+      <button class="btn btn-secondary btn-sm" onclick="App.showToast('SSO Setup', 'Enterprise identity provider integration preview.', 'info')">
+        Configure Identity Provider →
+      </button>
+    </div>
+  </div>
+
+  <!-- Members Table Card -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Active Team Members & Roles</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Member Name</th>
+            <th>Role</th>
+            <th>Teams / Squads</th>
+            <th>MFA Enforced</th>
+            <th>Last Active</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="team-table-body">
+          <!-- Populated by script below -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  const tbody = document.getElementById('team-table-body');
+  if (!tbody || !EnterpriseData) return;
+
+  tbody.innerHTML = EnterpriseData.teamMembers.map(m => `
+    <tr>
+      <td>
+        <div style="font-weight: 600; color: var(--color-text);">${m.name}</div>
+        <div style="font-size: var(--text-2xs); color: var(--color-text-muted);">${m.email}</div>
+      </td>
+      <td>
+        <span class="badge ${m.role === 'Admin' ? 'badge-critical' : (m.role === 'Reviewer' ? 'badge-low' : 'badge-neutral')}">${m.role}</span>
+      </td>
+      <td>
+        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
+          ${m.teams.map(t => `<span class="badge badge-pill badge-neutral">${t}</span>`).join('')}
+        </div>
+      </td>
+      <td>
+        <span class="badge ${m.mfa ? 'badge-verified' : 'badge-neutral'}">${m.mfa ? 'Enforced' : 'Optional'}</span>
+      </td>
+      <td style="color: var(--color-text-muted); font-size: var(--text-xs);">${m.lastActive}</td>
+      <td style="text-align: right;">
+        <button class="btn btn-sm btn-ghost" onclick="App.showToast('User Access', 'Edit role permissions for ${m.name}', 'info')">Manage</button>
+      </td>
+    </tr>
+  `).join('');
+});
+</script>
+{% endblock %}

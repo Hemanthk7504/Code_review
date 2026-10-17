@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block title %}Automated Revisions & Diffs · CodeSentinel{% endblock %}
+{% block breadcrumb %}Revisions & Diffs{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width: 1300px; margin: 0 auto;">
+
+  <!-- Informative Empty State / Offline LLM Notice Banner -->
+  <div id="revisions-empty-state" class="card" style="display: none; padding: 48px 32px; text-align: center; margin-bottom: var(--space-xl);">
+    <div style="font-size: 40px; margin-bottom: 16px;" id="empty-state-icon">ℹ️</div>
+    <h2 id="empty-state-title" style="font-size: var(--text-2xl); font-weight: 800; margin-bottom: 8px;">No Code Revision Available</h2>
+    <p id="empty-state-desc" style="color: var(--color-text-secondary); max-width: 620px; margin: 0 auto 24px; font-size: var(--text-sm); line-height: 1.6;">
+      Automated patch generation requires an active AI/LLM cognitive engine or verified defects to fix.
+    </p>
+    <div style="display: flex; justify-content: center; gap: 12px; flex-wrap: wrap;" id="empty-state-actions">
+      <a href="/review/results" class="btn btn-primary" id="btn-goto-results">
+        <span>View Review Findings & Static Analysis</span>
+      </a>
+      <a href="/review/new" class="btn btn-secondary">
+        <span>Upload / Review Another File</span>
+      </a>
+    </div>
+  </div>
+
+  <!-- Main Revisions Content (Shown when actual revisions exist) -->
+  <div id="revisions-main-content">
+  <!-- Validation Gate Card -->
+  <div class="card" style="margin-bottom: var(--space-xl);">
+    <div class="card-header" style="flex-wrap: wrap;">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <h2 style="font-size: var(--text-2xl); font-weight: 800;">Autonomous Code Revision</h2>
+          <span id="val-status-badge" class="badge"></span>
+        </div>
+        <p style="font-size: var(--text-sm); color: var(--color-text-secondary); display: flex; align-items: center; gap: 8px;">
+          <span>Target File:</span>
+          <code id="val-path" style="font-weight: 600;"></code>
+          <select id="revisions-file-select" class="form-select form-select-sm" style="display: none; width: auto; font-weight: 600; padding: 2px 8px;" onchange="DiffController.switchFile(this.value)"></select>
+        </p>
+      </div>
+
+      <div style="display: flex; gap: var(--space-xs); flex-wrap: wrap;">
+        <button class="btn btn-ghost btn-sm" onclick="localStorage.removeItem('codesentinel_last_review'); location.reload();" title="Clear review cache">
+          <span>✕ Clear Cached Review</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="DiffController.copyRevisedCode()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+          <span>Copy Revised Code</span>
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="DiffController.downloadPatch()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          <span>Download Patch</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Metrics Bar -->
+    <div class="stats-grid" style="margin: var(--space-md) 0; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));">
+      <div class="stat-card" style="padding: 14px;">
+        <span class="stat-label">Issues Resolved</span>
+        <div class="stat-value" id="val-resolved" style="color: var(--color-verified); font-size: var(--text-2xl);">0 / 0</div>
+      </div>
+      <div class="stat-card" style="padding: 14px;">
+        <span class="stat-label">New Defects</span>
+        <div class="stat-value" id="val-new-issues" style="font-size: var(--text-2xl);">0</div>
+      </div>
+      <div class="stat-card" style="padding: 14px;">
+        <span class="stat-label">Risk Reduction</span>
+        <div class="stat-value" id="val-risk-delta" style="font-size: var(--text-2xl);">0%</div>
+        <div style="font-size: var(--text-2xs); color: var(--color-text-muted); margin-top: 4px;">
+          <span id="val-risk-before">0</span> → <span id="val-risk-after">0</span>
+        </div>
+      </div>
+      <div class="stat-card" style="padding: 14px;">
+        <span class="stat-label">AST Verification</span>
+        <div id="val-syntax" style="margin-top: 8px;"></div>
+      </div>
+    </div>
+
+    <!-- Validation Gate Reasons -->
+    <div style="margin-top: var(--space-md); padding: var(--space-md); background: var(--color-surface-sunken); border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+      <span class="form-label">Automated Validation Gate Diagnostics</span>
+      <ul id="val-reasons-list" style="padding-left: var(--space-md); margin-top: 6px;"></ul>
+    </div>
+  </div>
+
+  <!-- Change Explanations Section -->
+  <div class="card" style="margin-bottom: var(--space-xl);">
+    <div class="card-header">
+      <h3 class="card-title">Detailed Modifications & Fix Rationale</h3>
+    </div>
+    <div id="changes-explanation-container"></div>
+  </div>
+
+  <!-- Companion Unit Test (pytest) Section -->
+  <div class="card" id="companion-test-wrapper" style="margin-bottom: var(--space-xl); display: none;">
+    <div class="card-header">
+      <h3 class="card-title">
+        <span>🧪 Generated Companion Unit Test (pytest)</span>
+      </h3>
+      <button class="btn btn-secondary btn-sm" onclick="DiffController.copyTestCode()">Copy Test Code</button>
+    </div>
+    <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-bottom: 12px;">
+      Autonomous test suite asserting that the security vulnerabilities and defects are mitigated without regressions.
+    </p>
+    <pre id="companion-test-code" style="color: #93C5FD; max-height: 280px;"></pre>
+  </div>
+
+  <!-- Diff Viewer Card -->
+  <div class="diff-card">
+    <div class="diff-header">
+      <div style="font-weight: 600; font-size: var(--text-sm); display: flex; align-items: center; gap: 8px;">
+        <span>Unified & Side-by-Side Code Diff</span>
+      </div>
+
+      <!-- Diff Toggle Switch -->
+      <div style="display: flex; gap: 2px; background: var(--color-surface); padding: 2px; border-radius: var(--radius-md); border: 1px solid var(--color-border);">
+        <button class="btn btn-ghost btn-sm diff-mode-btn active" data-mode="side-by-side" onclick="DiffController.setViewMode('side-by-side')">Side-by-Side</button>
+        <button class="btn btn-ghost btn-sm diff-mode-btn" data-mode="unified" onclick="DiffController.setViewMode('unified')">Unified</button>
+      </div>
+    </div>
+
+    <div class="diff-content-wrapper" id="diff-viewport">
+      <!-- Populated by diff.js -->
+    </div>
+  </div>
+  </div> <!-- /#revisions-main-content -->
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/diff.js?v=2.3.0"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  DiffController.init();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Regulatory Compliance · CodeSentinel{% endblock %}
+{% block breadcrumb %}Compliance Scorecards{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <!-- Page Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <h1 style="font-size: var(--text-3xl); font-weight: 800; letter-spacing: -0.03em;">Regulatory Compliance Posture</h1>
+      <p style="color: var(--color-text-secondary); margin-top: 4px;">Automated mapping and verification of codebase vulnerabilities to global cybersecurity frameworks.</p>
+    </div>
+    <div style="display: flex; gap: var(--space-xs);">
+      <button class="btn btn-secondary" onclick="window.print()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>
+        <span>Print Certificate</span>
+      </button>
+      <button class="btn btn-primary" onclick="ComplianceController.exportAuditJson()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Export Audit JSON</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Framework Switcher Tabs -->
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
+    <div class="tabs-nav" role="tablist">
+      <button class="tab-item active" id="tab-owasp" onclick="ComplianceController.switchFramework('OWASP_TOP_10')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        <span>OWASP Top 10 (2021)</span>
+      </button>
+      <button class="tab-item" id="tab-soc2" onclick="ComplianceController.switchFramework('SOC_2')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+        <span>SOC 2 Type II</span>
+      </button>
+      <button class="tab-item" id="tab-pcidss" onclick="ComplianceController.switchFramework('PCI_DSS')">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"></rect><line x1="1" y1="10" x2="23" y2="10"></line></svg>
+        <span>PCI-DSS v4.0</span>
+      </button>
+    </div>
+
+    <div style="font-size: var(--text-xs); color: var(--color-text-muted); display: flex; align-items: center; gap: 6px;">
+      <span class="dot-indicator dot-success"></span>
+      <span>Continuous Automated Regulatory Auditing</span>
+    </div>
+  </div>
+
+  <!-- Score Summary KPIs -->
+  <div class="stats-grid mb-xl" style="grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));">
+    <div class="stat-card" style="padding: 22px;">
+      <div class="stat-header">
+        <span class="stat-label">Framework Compliance</span>
+        <div class="stat-icon-wrapper" style="background: rgba(16, 185, 129, 0.12); color: var(--color-verified);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+        </div>
+      </div>
+      <div class="stat-value" id="comp-score" style="color: var(--color-verified); font-size: 34px; font-weight: 800; margin-top: 4px;">0%</div>
+      <div style="height: 6px; background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-radius: 999px; margin: 12px 0 8px 0; overflow: hidden;">
+        <div id="comp-score-bar" style="height: 100%; width: 0%; background: var(--color-verified); transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);"></div>
+      </div>
+      <div class="stat-footer">
+        <span style="color: var(--color-text-secondary); font-size: var(--text-xs);">Cross-verified with static rules & AST engine</span>
+      </div>
+    </div>
+
+    <div class="stat-card" style="padding: 22px;">
+      <div class="stat-header">
+        <span class="stat-label">Controls Passing</span>
+        <div class="stat-icon-wrapper" style="background: rgba(59, 130, 246, 0.12); color: var(--color-primary);">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><polyline points="9 11 12 14 22 4"></polyline></svg>
+        </div>
+      </div>
+      <div class="stat-value" id="comp-passing" style="font-size: 34px; font-weight: 800; margin-top: 4px;">0 / 0</div>
+      <div style="height: 6px; background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-radius: 999px; margin: 12px 0 8px 0; overflow: hidden;">
+        <div id="comp-passing-bar" style="height: 100%; width: 0%; background: var(--color-primary); transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);"></div>
+      </div>
+      <div class="stat-footer">
+        <span id="comp-violations-text" style="color: var(--color-text-secondary); font-size: var(--text-xs);">Zero active violations detected</span>
+      </div>
+    </div>
+
+    <div class="stat-card" style="padding: 22px;">
+      <div class="stat-header">
+        <span class="stat-label">Audit Readiness</span>
+        <div class="stat-icon-wrapper" style="background: rgba(168, 85, 247, 0.12); color: #A855F7;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+        </div>
+      </div>
+      <div class="stat-value" id="comp-readiness" style="color: var(--color-verified); font-size: 30px; font-weight: 800; margin-top: 4px;">Certified</div>
+      <div style="height: 6px; background: var(--color-surface-sunken); border: 1px solid var(--color-border); border-radius: 999px; margin: 12px 0 8px 0; overflow: hidden;">
+        <div id="comp-readiness-bar" style="height: 100%; width: 100%; background: var(--color-verified);"></div>
+      </div>
+      <div class="stat-footer">
+        <span style="color: var(--color-text-secondary); font-size: var(--text-xs);">OASIS SARIF 2.1.0 logs exportable</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Compliance Controls Breakdown Card -->
+  <div class="card" style="padding: 0; overflow: hidden; border: 1px solid var(--color-border); border-radius: var(--radius-lg); margin-bottom: var(--space-xl);">
+    <!-- Card Header with Title and Filter Toolbar -->
+    <div style="padding: 20px 24px; border-bottom: 1px solid var(--color-border); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; background: var(--color-surface);">
+      <div>
+        <div style="display: flex; align-items: center; gap: 10px;">
+          <h2 style="font-size: var(--text-lg); font-weight: 700; margin: 0;" id="framework-title-header">OWASP Top 10 Controls</h2>
+          <span class="badge badge-neutral" id="control-count-badge">10 Controls Evaluated</span>
+        </div>
+        <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-top: 4px;">
+          Direct mapping to Common Weakness Enumeration (CWE) and automated static rule corroboration.
+        </p>
+      </div>
+
+      <!-- Quick Filter Pills & Search -->
+      <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <!-- Search Input -->
+        <div style="position: relative; width: 260px;">
+          <input type="text" id="compliance-search-input" class="form-control" style="padding-left: 32px; font-size: var(--text-xs); height: 34px;"
+                 placeholder="Search control, name, or CWE..." oninput="ComplianceController.setSearch(this.value)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="position: absolute; left: 10px; top: 10px; color: var(--color-text-muted); pointer-events: none;"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        </div>
+
+        <!-- Filter Status Buttons -->
+        <div style="display: flex; gap: 6px;">
+          <button class="compliance-status-filter-btn active" id="filter-all" onclick="ComplianceController.setStatusFilter('all')">All (<span id="filter-count-all">10</span>)</button>
+          <button class="compliance-status-filter-btn" id="filter-compliant" onclick="ComplianceController.setStatusFilter('COMPLIANT')">Compliant (<span id="filter-count-compliant">10</span>)</button>
+          <button class="compliance-status-filter-btn" id="filter-violations" onclick="ComplianceController.setStatusFilter('VIOLATIONS')">Violations (<span id="filter-count-violations">0</span>)</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Data Table -->
+    <div class="table-responsive" style="border: none; border-radius: 0;">
+      <table class="data-table" id="compliance-table">
+        <thead>
+          <tr>
+            <th style="width: 130px;">Control ID</th>
+            <th>Name & Objectives</th>
+            <th style="width: 320px;">Associated CWEs</th>
+            <th style="width: 150px; text-align: center;">Detected Violations</th>
+            <th style="width: 160px; text-align: right;">Compliance Status</th>
+          </tr>
+        </thead>
+        <tbody id="compliance-table-body">
+          <!-- Filled by JavaScript -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/compliance.js?v=2.3.0"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  ComplianceController.init();
+});
+</script>
+{% endblock %}

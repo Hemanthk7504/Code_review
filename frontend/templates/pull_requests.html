@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}GitHub Pull Requests · CodeSentinel{% endblock %}
+{% block breadcrumb %}Pull Requests{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width: 1100px; margin: 0 auto;">
+  <div style="margin-bottom: var(--space-xl);">
+    <h1 style="font-size: var(--text-2xl); font-weight: 800;">GitHub Pull Request Reviews</h1>
+    <p style="color: var(--color-text-secondary); margin-top: 4px;">
+      Trigger autonomous reviews on GitHub pull requests and dispatch automated fix branches.
+    </p>
+  </div>
+
+  <!-- PR Submission Form Card -->
+  <div class="card" style="margin-bottom: var(--space-xl);">
+    <div class="card-header">
+      <h3 class="card-title">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5"></path><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>
+        <span>Dispatch Pull Request Review</span>
+      </h3>
+    </div>
+
+    <form onsubmit="JobsController.submitPR(event)">
+      <div style="display: grid; grid-template-columns: 2fr 1fr; gap: var(--space-md); margin-bottom: var(--space-md);" class="responsive-grid-2">
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">Repository (owner/name)</label>
+          <input type="text" id="pr-repo-input" class="form-control" placeholder="e.g. acme-corp/payment-service" required>
+        </div>
+        <div class="form-group" style="margin-bottom: 0;">
+          <label class="form-label">PR Number</label>
+          <input type="number" id="pr-number-input" class="form-control" placeholder="e.g. 142" required min="1">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label">GitHub Access Token (Optional)</label>
+        <input type="password" id="pr-token-input" class="form-control" placeholder="Leave blank to use server GITHUB_TOKEN environment variable">
+        <small style="color: var(--color-text-muted); margin-top: 4px;">Requires <code>contents: write</code> and <code>pull-requests: write</code> permissions if creating branches.</small>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: var(--space-lg); flex-wrap: wrap; gap: var(--space-md);">
+        <label class="checkbox-label">
+          <input type="checkbox" id="pr-create-check" class="checkbox-input" checked>
+          <span>Automatically open a separate revision PR with verified fixes</span>
+        </label>
+
+        <button type="submit" class="btn btn-primary" id="pr-submit-btn">
+          <span>Dispatch Background Review Job</span>
+        </button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Active Job Tracker Card -->
+  <div class="card" id="active-job-card" style="margin-bottom: var(--space-xl); display: none; border-color: var(--color-primary);">
+    <div class="card-header">
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
+          <h3 class="card-title" style="margin: 0;">Active Background Review Job</h3>
+          <span id="job-status-chip" class="badge"></span>
+        </div>
+        <small style="color: var(--color-text-muted);">Job ID: <code id="job-id-text"></code> (Polling every 3s)</small>
+      </div>
+    </div>
+
+    <div style="padding: var(--space-md); background: var(--color-surface-sunken); border-radius: var(--radius-md); border: 1px solid var(--color-border); margin-bottom: var(--space-md);">
+      <div style="font-size: var(--text-sm); font-weight: 500; color: var(--color-text);" id="job-detail-text"></div>
+    </div>
+
+    <div id="job-result-container" style="display: none;">
+      <a id="job-pr-link" href="#" target="_blank" class="btn btn-primary btn-sm" style="margin-bottom: 12px; display: none;">
+        <span>View Opened Revision PR ↗</span>
+      </a>
+      <details style="margin-top: 8px;">
+        <summary style="font-size: var(--text-xs); color: var(--color-primary); cursor: pointer;">Inspect Full Job Result JSON</summary>
+        <pre id="job-json-raw" style="margin-top: 8px; max-height: 240px; font-size: 11px;"></pre>
+      </details>
+    </div>
+  </div>
+
+  <!-- Past Jobs Table Card -->
+  <div class="card">
+    <div class="card-header">
+      <h3 class="card-title">Pull Request Review History</h3>
+    </div>
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Job ID</th>
+            <th>Repository & PR</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th style="text-align: right;">Action</th>
+          </tr>
+        </thead>
+        <tbody id="pr-jobs-tbody">
+          <!-- Populated by jobs.js -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/jobs.js"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  JobsController.init();
+});
+</script>
+<style>
+@media(max-width: 768px) {
+  .responsive-grid-2 {
+    grid-template-columns: 1fr !important;
+  }
+}
+</style>
+{% endblock %}

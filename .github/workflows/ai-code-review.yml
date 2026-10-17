@@ -1,0 +1,26 @@
+name: AI Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+jobs:
+  review:
+    # do not review the bot's own revision PRs
+    if: ${{ !startsWith(github.head_ref, 'ai-review/') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    steps:
+      - name: Ask the review backend to analyse this PR
+        env:
+          REVIEW_API_URL: ${{ secrets.REVIEW_API_URL }}
+          REVIEW_API_KEY: ${{ secrets.REVIEW_API_KEY }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          curl --fail-with-body -sS -X POST "$REVIEW_API_URL/api/v1/github/pull-request" \
+            -H "Content-Type: application/json" \
+            -H "X-API-Key: $REVIEW_API_KEY" \
+            -d "{\"repo\": \"${{ github.repository }}\", \"pr_number\": ${{ github.event.pull_request.number }}, \"github_token\": \"$GH_TOKEN\"}"

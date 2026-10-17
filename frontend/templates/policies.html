@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+
+{% block title %}Quality Gates · CodeSentinel{% endblock %}
+{% block breadcrumb %}Quality Gates{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <!-- Page Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <h1 style="font-size: var(--text-3xl); font-weight: 800; letter-spacing: -0.03em;">Quality Gates & Policy Engine</h1>
+      <p style="color: var(--color-text-secondary); margin-top: 4px;">Automated governance rules enforcing zero-trust security thresholds prior to branch merges.</p>
+    </div>
+    <div style="display: flex; gap: var(--space-xs);">
+      <button class="btn btn-secondary" onclick="PoliciesController.simulateLastReview()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+        <span>Evaluate Last Review</span>
+      </button>
+      <button class="btn btn-primary" onclick="PoliciesController.savePolicy()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+        <span>Save Active Policy</span>
+      </button>
+    </div>
+  </div>
+
+  <div class="responsive-grid-3" style="grid-template-columns: 1fr 1fr; gap: var(--space-xl);">
+    <!-- Policy Rules Configuration Card -->
+    <div class="card card-hoverable">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: var(--text-lg); font-weight: 700;">Active Gate Rules</h3>
+        <span class="badge badge-verified">Active Enforcement</span>
+      </div>
+
+      <div class="form-group mb-lg">
+        <label class="form-label" style="display: flex; justify-content: space-between;">
+          <span>Maximum Allowed Risk Score (0-100)</span>
+          <strong id="val-risk-threshold" style="color: var(--color-primary); font-family: var(--font-mono);">35.0</strong>
+        </label>
+        <input type="range" id="input-risk-threshold" min="10" max="90" step="5" value="35" class="form-control" style="cursor: pointer;" oninput="document.getElementById('val-risk-threshold').textContent = this.value + '.0'">
+        <small style="color: var(--color-text-muted);">Pull requests scoring above this risk threshold are automatically blocked from merging.</small>
+      </div>
+
+      <div class="form-group mb-lg">
+        <label class="form-label" style="display: flex; justify-content: space-between;">
+          <span>Max Unresolved Findings Permitted</span>
+          <strong id="val-max-findings" style="color: var(--color-primary); font-family: var(--font-mono);">4</strong>
+        </label>
+        <input type="range" id="input-max-findings" min="0" max="15" step="1" value="4" class="form-control" style="cursor: pointer;" oninput="document.getElementById('val-max-findings').textContent = this.value">
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 12px; margin-top: 20px;">
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="check-block-critical" checked style="width: 16px; height: 16px; accent-color: var(--color-primary);">
+          <div>
+            <span style="font-weight: 600; font-size: var(--text-sm);">Block on Critical Severity Vulnerabilities</span>
+            <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Immediately reject changes if zero-day or arbitrary code execution bugs exist.</div>
+          </div>
+        </label>
+
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="check-block-high" checked style="width: 16px; height: 16px; accent-color: var(--color-primary);">
+          <div>
+            <span style="font-weight: 600; font-size: var(--text-sm);">Block on High Severity Security Flaws</span>
+            <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Enforce mandatory fixes for injection, XSS, and broken access controls.</div>
+          </div>
+        </label>
+
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="check-block-secrets" checked style="width: 16px; height: 16px; accent-color: var(--color-primary);">
+          <div>
+            <span style="font-weight: 600; font-size: var(--text-sm);">Zero-Tolerance for Exposed Secrets & Keys</span>
+            <div style="font-size: var(--text-xs); color: var(--color-text-muted);">Automatically blocks code containing AWS, GitHub, Stripe, or private RSA keys.</div>
+          </div>
+        </label>
+
+        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+          <input type="checkbox" id="check-require-syntax" checked style="width: 16px; height: 16px; accent-color: var(--color-primary);">
+          <div>
+            <span style="font-weight: 600; font-size: var(--text-sm);">Enforce AST Syntax Correctness</span>
+            <div style="font-size: var(--text-xs); color: var(--color-text-muted);">All revisions must pass strict AST parsing without syntax errors.</div>
+          </div>
+        </label>
+      </div>
+    </div>
+
+    <!-- Live Gate Evaluation Results -->
+    <div class="card card-hoverable" id="gate-evaluation-panel">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <h3 style="font-size: var(--text-lg); font-weight: 700;">Live Gate Evaluation</h3>
+        <span class="badge" id="eval-status-badge" style="font-size: 13px;">Awaiting Run</span>
+      </div>
+
+      <div id="eval-summary-banner" style="padding: 16px; border-radius: var(--radius-md); background: var(--color-surface-sunken); margin-bottom: 20px;">
+        <div style="font-size: var(--text-sm); color: var(--color-text-secondary);">
+          Click <strong>"Evaluate Last Review"</strong> or run a new code review to test this policy against current findings.
+        </div>
+      </div>
+
+      <div style="font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 10px;">Rule Checkpoints</div>
+      <div id="eval-rules-list" style="display: flex; flex-direction: column; gap: 8px;">
+        <!-- Filled by JavaScript -->
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/policies.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  PoliciesController.init();
+});
+</script>
+{% endblock %}

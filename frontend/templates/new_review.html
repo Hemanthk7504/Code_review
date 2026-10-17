@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}New Code Review · CodeSentinel{% endblock %}
+{% block breadcrumb %}New Review{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in" style="max-width: 1200px; margin: 0 auto;">
+  <!-- Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <h1 style="font-size: var(--text-2xl); font-weight: 800;">Review Code & Generate Autonomous Revision</h1>
+      <p style="color: var(--color-text-secondary); margin-top: 4px;">Paste source code or drop Python files to run static tools, multi-agent AI detection, and self-verification.</p>
+    </div>
+
+    <!-- Presets Selector -->
+    <div style="display: flex; align-items: center; gap: 8px;">
+      <label class="form-label" style="margin: 0;">Example Presets:</label>
+      <select class="form-select" style="width: auto; min-width: 220px;" onchange="ReviewController.loadPreset(this.value)">
+        <option value="eval">Arbitrary Eval & Bare Except</option>
+        <option value="sqli">SQL Injection & Subprocess Shell</option>
+        <option value="secret">Hardcoded AWS Secret & Timeout</option>
+        <option value="clean">Clean / Secure Code Reference</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- Drag and drop zone -->
+  <div class="dropzone" id="file-dropzone" onclick="document.getElementById('hidden-file-input').click()" style="margin-bottom: var(--space-lg);">
+    <input type="file" id="hidden-file-input" multiple accept=".py" style="display: none;" onchange="ReviewController.handleFileInputChange(event)">
+    <div style="font-size: 28px; margin-bottom: 8px;">📁</div>
+    <div style="font-weight: 600; color: var(--color-text); font-size: var(--text-md);">Drag & drop Python files here, or click to browse</div>
+    <div style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 4px;">Supports multiple .py files. Each file will open in a separate tab below.</div>
+  </div>
+
+  <!-- Tabbed Code Editor Container -->
+  <div class="editor-container" style="margin-bottom: var(--space-xl);">
+    <!-- Tabs Bar -->
+    <div class="editor-tabs-bar" id="editor-tabs-container">
+      <!-- Populated by review.js -->
+    </div>
+
+    <!-- Code Workspace with Line Numbers -->
+    <div class="editor-workspace">
+      <div class="editor-line-numbers" id="editor-line-numbers"></div>
+      <textarea id="code-editor-textarea" class="editor-textarea" spellcheck="false"
+                oninput="ReviewController.handleEditorInput(event)"
+                onscroll="ReviewController.handleEditorScroll(event)"></textarea>
+    </div>
+  </div>
+
+  <!-- Action Bar -->
+  <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-md); padding: var(--space-lg); background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg);">
+    <div style="display: flex; align-items: center; gap: 8px; font-size: var(--text-xs); color: var(--color-text-muted);">
+      <span class="dot-indicator dot-success"></span>
+      <span>7 Active Specialist Agents Ready</span>
+      <span>·</span>
+      <span>AST + Pylint + Bandit + Radon + Secret Scanner</span>
+    </div>
+
+    <div style="display: flex; gap: var(--space-sm);">
+      <button class="btn btn-secondary review-action-btn" onclick="ReviewController.startReview(false)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+        <span>Review Only</span>
+      </button>
+
+      <button class="btn btn-primary review-action-btn" onclick="ReviewController.startReview(true)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="18" cy="18" r="3"></circle><circle cx="6" cy="6" r="3"></circle><path d="M13 6h3a2 2 0 0 1 2 2v7"></path><line x1="6" y1="9" x2="6" y2="21"></line></svg>
+        <span>Review and Auto-Revise (Full Loop)</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Stepper Overlay Modal during Execution -->
+<div class="drawer-backdrop" id="stepper-modal-overlay">
+  <div class="card" style="width: 580px; max-width: 90vw; margin: 15vh auto; background: var(--color-surface-elevated); border: 1px solid var(--color-border-strong); box-shadow: var(--shadow-elevated);">
+    <div style="text-align: center; margin-bottom: 24px;">
+      <div class="spin" style="width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--color-primary); border-radius: 50%; margin: 0 auto 14px;"></div>
+      <h3 style="font-size: var(--text-lg); font-weight: 700;">Cognitive Review Pipeline In Progress</h3>
+      <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 4px;">Running static rules, querying AI specialists, verifying claims, and generating validated diffs...</p>
+    </div>
+
+    <div class="pipeline-stages-container" style="margin-bottom: 24px;">
+      <div class="pipeline-stage-item">
+        <div class="stage-bubble" id="stage-static">1</div>
+        <div class="stage-name">Static</div>
+      </div>
+      <div class="pipeline-stage-item">
+        <div class="stage-bubble" id="stage-ai">2</div>
+        <div class="stage-name">Agents</div>
+      </div>
+      <div class="pipeline-stage-item">
+        <div class="stage-bubble" id="stage-consolidation">3</div>
+        <div class="stage-name">Merge</div>
+      </div>
+      <div class="pipeline-stage-item">
+        <div class="stage-bubble" id="stage-risk">4</div>
+        <div class="stage-name">Risk</div>
+      </div>
+      <div class="pipeline-stage-item">
+        <div class="stage-bubble" id="stage-verify">5</div>
+        <div class="stage-name">Verify</div>
+      </div>
+      <div class="pipeline-stage-item">
+        <div class="stage-bubble" id="stage-fix">6</div>
+        <div class="stage-name">Fix</div>
+      </div>
+      <div class="pipeline-stage-item">
+        <div class="stage-bubble" id="stage-reval">7</div>
+        <div class="stage-name">Reval</div>
+      </div>
+    </div>
+
+    <div class="skeleton skeleton-card" style="height: 16px; width: 100%; border-radius: var(--radius-full);"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/review.js?v=2.3.0"></script>
+<script>
+window.addEventListener('DOMContentLoaded', () => {
+  ReviewController.initEditor();
+});
+</script>
+{% endblock %}

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="favGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#6366F1" />
+      <stop offset="100%" stop-color="#06B6D4" />
+    </linearGradient>
+  </defs>
+  <path d="M16 2L3 7V15C3 23 8.8 29 16 31C23.2 29 29 23 29 15V7L16 2Z" fill="url(#favGrad)" />
+  <circle cx="16" cy="15" r="4.5" fill="#FFFFFF" />
+  <circle cx="16" cy="15" r="2.2" fill="#6366F1" />
+</svg>

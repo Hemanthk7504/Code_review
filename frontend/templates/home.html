@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{% block title %}CodeSentinel · Autonomous AI Code Review & Remediation Platform{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <!-- Hero Section -->
+  <section class="hero-section">
+    <div class="hero-badge">
+      <span class="dot-indicator dot-success live-pulse"></span>
+      <span>v2.0 Cognitive Engine Live · Enterprise Grade</span>
+    </div>
+
+    <h1 class="hero-title">
+      Autonomous AI Code Review & Remediation Platform
+    </h1>
+
+    <p class="hero-subtitle">
+      Detect critical vulnerabilities, enforce architectural quality gates, eliminate false positives through multi-agent consensus, and generate verified pull-request fixes automatically before production.
+    </p>
+
+    <div class="hero-actions">
+      <a href="/login" class="btn btn-primary btn-lg" id="hero-main-cta" style="gap: 10px;">
+        <span>Launch Console / Sign In</span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+      </a>
+      <a href="#pipeline" class="btn btn-secondary btn-lg">
+        <span>Explore 7-Stage Pipeline</span>
+      </a>
+    </div>
+
+    <!-- Code Review & Autonomous Fix Visual Preview -->
+    <div class="hero-preview-wrapper animate-slide-up">
+      <div class="hero-preview-header">
+        <div class="hero-dots">
+          <span class="hero-dot dot-red"></span>
+          <span class="hero-dot dot-yellow"></span>
+          <span class="hero-dot dot-green"></span>
+        </div>
+        <div style="font-family: var(--font-mono); font-size: var(--text-2xs); color: var(--color-text-muted);">
+          auth_controller.py · Automated Remediation
+        </div>
+        <div style="display: flex; gap: 6px;">
+          <span class="badge badge-verified" style="font-size: 10px; padding: 2px 8px;">VERIFIED (100% Conf.)</span>
+        </div>
+      </div>
+      <div style="padding: 20px; font-family: var(--font-mono); font-size: 13px; line-height: 1.6;">
+        <div style="color: var(--color-text-muted); margin-bottom: 8px;">// [Finding SEC-SQLI (CWE-89)]: Critical SQL injection flaw detected</div>
+        <div style="background: rgba(239, 68, 68, 0.15); color: #FCA5A5; padding: 6px 12px; border-radius: 4px; border-left: 3px solid var(--color-critical); margin-bottom: 8px;">
+          - cursor.execute(f"SELECT * FROM accounts WHERE user_id = '{user_input}'")
+        </div>
+        <div style="background: rgba(16, 185, 129, 0.15); color: #6EE7B7; padding: 6px 12px; border-radius: 4px; border-left: 3px solid var(--color-verified);">
+          + cursor.execute("SELECT * FROM accounts WHERE user_id = %s", (user_input,))
+        </div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--color-border); font-size: 11px; color: var(--color-text-secondary);">
+          <span>Risk Reduction: <strong>88 → 12 (-76 pts)</strong></span>
+          <span>Syntax: <strong>100% OK</strong></span>
+          <span>New Defects: <strong>0</strong></span>
+          <span class="badge badge-neutral" style="font-size: 10px;">AST Parameterized Query Match</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Live Stats Strip -->
+  <section style="padding: 0 24px;">
+    <div class="stats-banner">
+      <div class="stats-item">
+        <div class="stats-item-val">99.8%</div>
+        <div class="stats-item-label">Finding Precision</div>
+      </div>
+      <div class="stats-item">
+        <div class="stats-item-val">-72%</div>
+        <div class="stats-item-label">Avg Risk Reduction</div>
+      </div>
+      <div class="stats-item">
+        <div class="stats-item-val">30+</div>
+        <div class="stats-item-label">CWE Taxonomy Rules</div>
+      </div>
+      <div class="stats-item">
+        <div class="stats-item-val">&lt; 1.0s</div>
+        <div class="stats-item-label">Hybrid Analysis Speed</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7-Stage Agentic Pipeline Section -->
+  <section class="home-section" id="pipeline">
+    <div class="home-section-header">
+      <div class="home-section-tag">Self-Validating Architecture</div>
+      <h2 class="home-section-title">The 7-Stage Cognitive Pipeline</h2>
+      <p class="home-section-desc">
+        Unlike traditional static linters that drown developers in false positives, CodeSentinel uses a multi-stage consensus loop that verifies every finding before proposing fixes.
+      </p>
+    </div>
+
+    <div class="pipeline-steps-grid">
+      <div class="pipeline-step-card">
+        <div class="pipeline-step-num">Stage 01</div>
+        <div class="pipeline-step-title">Static Analysis Engine</div>
+        <div class="pipeline-step-desc">Deterministic scans using AST, Bandit security rules, Radon complexity metrics, and Pylint standards.</div>
+      </div>
+
+      <div class="pipeline-step-card">
+        <div class="pipeline-step-num">Stage 02</div>
+        <div class="pipeline-step-title">Multi-Agent Review</div>
+        <div class="pipeline-step-desc">Specialized AI agents for Bug Detection, Security Flaws, Performance Bottlenecks, and Idiomatic Refactoring.</div>
+      </div>
+
+      <div class="pipeline-step-card">
+        <div class="pipeline-step-num">Stage 03</div>
+        <div class="pipeline-step-title">Consolidation & Deduplication</div>
+        <div class="pipeline-step-desc">Merging static and AI findings, deduplicating line collisions, and calculating cross-agent consensus.</div>
+      </div>
+
+      <div class="pipeline-step-card">
+        <div class="pipeline-step-num">Stage 04</div>
+        <div class="pipeline-step-title">Deterministic Risk Engine</div>
+        <div class="pipeline-step-desc">Calculating file-level risk scores (0-100), severity weights, and assigning letter posture grades (A-F).</div>
+      </div>
+
+      <div class="pipeline-step-card">
+        <div class="pipeline-step-num">Stage 05</div>
+        <div class="pipeline-step-title">Self-Verification Loop</div>
+        <div class="pipeline-step-desc">Automated adversary agent inspects evidence to confirm valid flaws and reject noise or false alarms.</div>
+      </div>
+
+      <div class="pipeline-step-card">
+        <div class="pipeline-step-num">Stage 06</div>
+        <div class="pipeline-step-title">Autonomous Fix Generation</div>
+        <div class="pipeline-step-desc">Generates precise, minimal patches that address root causes without altering broader architecture.</div>
+      </div>
+
+      <div class="pipeline-step-card" style="grid-column: span 1;">
+        <div class="pipeline-step-num">Stage 07</div>
+        <div class="pipeline-step-title">Regression Re-Validation</div>
+        <div class="pipeline-step-desc">Re-runs static analysis on the proposed patch to guarantee zero newly introduced syntax or security bugs.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Core Capabilities Section -->
+  <section class="home-section" id="features">
+    <div class="home-section-header">
+      <div class="home-section-tag">Enterprise Capabilities</div>
+      <h2 class="home-section-title">Built for Modern Engineering Organizations</h2>
+      <p class="home-section-desc">
+        Complete coverage across code security, supply chain dependencies, regulatory compliance, and CI/CD pipelines.
+      </p>
+    </div>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+        </div>
+        <div class="feature-title">Deep AST & Secret Scanning</div>
+        <div class="feature-desc">
+          Detects hardcoded cloud credentials (AWS, OpenAI, GitHub), SQL injection, shell command execution, unsafe deserialization (Pickle/YAML), and missing request timeouts with zero configuration.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>
+        </div>
+        <div class="feature-title">Supply Chain (SCA & SBOM)</div>
+        <div class="feature-desc">
+          Instant dependency vulnerability analysis against NIST NVD databases and automated generation of standard CycloneDX v1.5 Software Bill of Materials (SBOM) for complete software transparency.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="7"></circle><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"></polyline></svg>
+        </div>
+        <div class="feature-title">Compliance Scorecards</div>
+        <div class="feature-desc">
+          Automated compliance mapping against OWASP Top 10 (2021), SOC 2 Type II Security & Confidentiality criteria, and PCI-DSS 4.0 requirement 6 with exportable executive scorecards.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="2" width="20" height="8" rx="2" ry="2"></rect><rect x="2" y="14" width="20" height="8" rx="2" ry="2"></rect><line x1="6" y1="6" x2="6.01" y2="6"></line><line x1="6" y1="18" x2="6.01" y2="18"></line></svg>
+        </div>
+        <div class="feature-title">Enterprise Integrations Hub</div>
+        <div class="feature-desc">
+          Native integration with Slack ChatOps webhooks, Jira automated bug ticket creation, Datadog security monitoring events, and HMAC-authenticated GitHub webhook dispatchers.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        </div>
+        <div class="feature-title">Role-Based Access Control (RBAC)</div>
+        <div class="feature-desc">
+          Granular permission tiers: Administrator for governance and user directories, Reviewer for code audits and automated revisions, and Viewer for audit log and compliance report access.
+        </div>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon-box">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line></svg>
+        </div>
+        <div class="feature-title">OASIS SARIF 2.1.0 & Exports</div>
+        <div class="feature-desc">
+          Full support for OASIS SARIF v2.1.0 format for seamless integration into GitHub Advanced Security Code Scanning tabs, GitLab Security, SonarQube, and Jenkins CI.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final Call to Action -->
+  <section style="background: var(--color-surface); border-top: 1px solid var(--color-border); border-bottom: 1px solid var(--color-border); padding: 80px 24px; text-align: center; margin-top: 40px;">
+    <div style="max-width: 680px; margin: 0 auto;">
+      <h2 style="font-size: var(--text-3xl); font-weight: 800; letter-spacing: -0.02em; margin-bottom: 16px;">
+        Ready to automate code quality and security?
+      </h2>
+      <p style="color: var(--color-text-secondary); font-size: var(--text-base); margin-bottom: 32px; line-height: 1.6;">
+        Sign in to your enterprise console, explore pre-seeded demo roles, or inspect pull requests with real-time AI agents.
+      </p>
+      <a href="/login" class="btn btn-primary btn-lg" style="padding: 12px 28px; font-size: var(--text-base);">
+        <span>Enter CodeSentinel Console →</span>
+      </a>
+    </div>
+  </section>
+
+  <!-- Public Footer -->
+  <footer class="public-footer">
+    <div style="max-width: 1000px; margin: 0 auto; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px;">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <img src="/static/img/logo.svg" alt="CodeSentinel" style="width: 20px; height: 20px;">
+        <span style="font-weight: 700; color: var(--color-text);">CodeSentinel</span>
+        <span style="color: var(--color-text-muted);">© 2026. Enterprise AI Code Governance.</span>
+      </div>
+      <div style="display: flex; gap: 20px;">
+        <a href="#pipeline" style="color: var(--color-text-secondary); text-decoration: none;">Pipeline</a>
+        <a href="#features" style="color: var(--color-text-secondary); text-decoration: none;">Capabilities</a>
+        <a href="/login" style="color: var(--color-primary); text-decoration: none; font-weight: 600;">Sign In</a>
+      </div>
+    </div>
+  </footer>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Dynamic CTA adaptation based on existing login session
+  document.addEventListener('DOMContentLoaded', () => {
+    const token = API.getToken();
+    const user = API.getUser();
+    if (token && user) {
+      const topbarSlot = document.getElementById('home-topbar-cta');
+      const heroCta = document.getElementById('hero-main-cta');
+      if (topbarSlot) {
+        topbarSlot.innerHTML = `<a href="/dashboard" class="btn btn-primary btn-sm"><span>Go to Dashboard →</span></a>`;
+      }
+      if (heroCta) {
+        heroCta.innerHTML = `<span>Go to Dashboard (${user.role})</span><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>`;
+        heroCta.href = '/dashboard';
+      }
+    }
+  });
+</script>
+{% endblock %}

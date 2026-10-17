@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Dependencies & SBOM · CodeSentinel{% endblock %}
+{% block breadcrumb %}Dependencies & SBOM{% endblock %}
+
+{% block content %}
+<div class="animate-fade-in">
+  <!-- Page Header -->
+  <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">
+    <div>
+      <h1 style="font-size: var(--text-3xl); font-weight: 800; letter-spacing: -0.03em;">Software Composition Analysis (SCA)</h1>
+      <p style="color: var(--color-text-secondary); margin-top: 4px;">Detect supply-chain CVEs in package manifests and export enterprise CycloneDX v1.5 Software Bill of Materials (SBOM).</p>
+    </div>
+    <div style="display: flex; gap: var(--space-xs);">
+      <button class="btn btn-secondary" onclick="DependenciesController.downloadSbom()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        <span>Download CycloneDX SBOM</span>
+      </button>
+      <button class="btn btn-primary" onclick="DependenciesController.scanManifest()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <span>Scan Manifest Now</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Main Grid -->
+  <div class="responsive-grid-3" style="grid-template-columns: 1fr 1.2fr; gap: var(--space-xl);">
+    <!-- Left Column: Manifest Editor -->
+    <div class="card card-hoverable">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h3 style="font-size: var(--text-base); font-weight: 700;">Package Manifest</h3>
+        <select id="manifest-type-select" class="form-control" style="width: auto; padding: 4px 8px; font-size: var(--text-xs);">
+          <option value="requirements.txt">requirements.txt</option>
+          <option value="pyproject.toml">pyproject.toml</option>
+          <option value="pipfile">Pipfile</option>
+        </select>
+      </div>
+
+      <p style="font-size: var(--text-xs); color: var(--color-text-secondary); margin-bottom: 12px;">
+        Paste your production dependencies below. CodeSentinel cross-checks with known NIST NVD and PyPA advisories.
+      </p>
+
+      <div class="code-editor-container">
+        <textarea id="manifest-textarea" class="code-editor" style="height: 380px; width: 100%; border: none; resize: vertical; padding: 12px; font-family: var(--font-mono); font-size: var(--text-xs); line-height: 1.6;" spellcheck="false"># Production Dependencies Manifest
+requests==2.28.1
+cryptography==39.0.0
+django==4.1.2
+urllib3==1.26.12
+pyyaml==5.3
+pillow==9.4.0
+fastapi==0.110.0
+pydantic==2.6.0
+uvicorn==0.27.0
+jinja2==3.1.2
+</textarea>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 12px;">
+        <button class="btn btn-ghost btn-sm" onclick="DependenciesController.loadSampleSafeManifest()">Load Patched Example</button>
+        <button class="btn btn-secondary btn-sm" onclick="DependenciesController.scanManifest()">Analyze Dependencies</button>
+      </div>
+    </div>
+
+    <!-- Right Column: Scan Results & CVE Diagnostics -->
+    <div>
+      <!-- KPI Cards Strip -->
+      <div class="stats-grid mb-lg" style="grid-template-columns: repeat(3, 1fr);">
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Total Packages</span>
+          </div>
+          <div class="stat-value" id="sca-total-deps">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">CVE Vulnerabilities</span>
+          </div>
+          <div class="stat-value" id="sca-total-cves" style="color: var(--color-critical);">0</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-header">
+            <span class="stat-label">Supply Chain Risk</span>
+          </div>
+          <div class="stat-value" id="sca-risk-score">0.0</div>
+        </div>
+      </div>
+
+      <!-- Vulnerability Breakdown Table -->
+      <div class="card card-hoverable">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+          <h3 style="font-size: var(--text-base); font-weight: 700;">Discovered Dependency CVEs</h3>
+          <span class="badge" id="sca-status-badge">Scan Ready</span>
+        </div>
+
+        <div class="table-container" style="max-height: 320px; overflow-y: auto;">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Package</th>
+                <th>Installed</th>
+                <th>CVE ID</th>
+                <th>Severity</th>
+                <th>Remediation Fix</th>
+              </tr>
+            </thead>
+            <tbody id="sca-findings-table-body">
+              <tr>
+                <td colspan="5" style="text-align: center; color: var(--color-text-muted); padding: 24px;">
+                  Click "Scan Manifest Now" to evaluate dependencies.
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dependencies.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  DependenciesController.init();
+});
+</script>
+{% endblock %}
