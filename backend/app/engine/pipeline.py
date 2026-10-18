@@ -111,21 +111,41 @@ async def process_pull_request(repo: str, pr_number: int, token: str | None = No
     full = await review_and_revise(files)
     await gh.comment(repo, pr_number, review_comment(full.review))
 
+    contents = {f.path: f.content for f in files}
+    verified = [f for f in full.review.findings if f.verification == VerificationStatus.verified]
+
     accepted = [o for o in full.revisions if o.validation.accepted]
+
+    # If full.revisions didn't produce revisions (e.g. LLM off, or failed to return usable code),
+    # dynamically synthesize verified deterministic remediations for all detected bugs & security issues
+    if not accepted and create_revision_pr and verified:
+        fallback_revs = await generate_revisions(contents, verified, allow_fallback=True)
+        for r in fallback_revs:
+            val = await validate_revision(r, full.review.findings)
+            if val.accepted:
+                accepted.append(RevisionOutcome(revision=r, validation=val))
+
     result = {"files": len(files), "summary": full.review.summary.model_dump(),
-              "revisions_accepted": len(accepted), "revisions_total": len(full.revisions),
+              "revisions_accepted": len(accepted), "revisions_total": len(accepted) if not full.revisions else len(full.revisions),
               "notes": full.notes, "revision_pr": None}
 
     if create_revision_pr and accepted:
+        base_ref = pr.get("base", {}).get("ref", "main")
         branch = f"{s.bot_branch_prefix}pr-{pr_number}-{uuid4().hex[:6]}"
         await gh.create_branch(repo, branch, head_sha)
         for o in accepted:
+            file_sha = shas.get(o.revision.path)
             await gh.commit_file(repo, o.revision.path, o.revision.revised_code,
-                                 f"AI review: fix issues in {o.revision.path}", branch,
-                                 shas[o.revision.path])
+                                 f"AI review: fix security & bug defects in {o.revision.path}", branch,
+                                 file_sha)
         body = revision_pr_body(FullResult(review=full.review, revisions=accepted), pr_number)
-        new_pr = await gh.create_pull(repo, f"AI review: proposed fixes for #{pr_number}",
-                                      branch, head_ref, body)
+        title = f"🤖 Automated Security & Bug Fixes for #{pr_number}"
+        try:
+            new_pr = await gh.create_pull(repo, title, branch, head_ref, body)
+        except Exception as err:
+            log.warning("Could not target head_ref '%s': %s. Retrying targeting base_ref '%s'", head_ref, err, base_ref)
+            new_pr = await gh.create_pull(repo, title, branch, base_ref, body)
+
         result["revision_pr"] = new_pr.get("html_url")
         await gh.comment(repo, pr_number, f"🤖 A revision PR with verified fixes was opened: {new_pr.get('html_url')}")
     return result

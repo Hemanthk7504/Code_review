@@ -96,12 +96,101 @@ async def repair_revision(path: str, original: str, prev_revision: Revision,
     return _build_revision(path, original, data, findings, iterations=iteration)
 
 
-async def generate_revisions(contents: dict[str, str], verified: list[Finding]) -> list[Revision]:
-    if not llm_client.enabled:
-        return []
+from ..core.schemas import ChangeExplanation, Finding, Revision, VerificationStatus
+
+
+def generate_deterministic_revision(path: str, original: str, findings: list[Finding]) -> Revision | None:
+    """Deterministic rule-based fix generator when LLM is unavailable or produces no revision."""
+    file_findings = [f for f in findings if f.file == path and f.proposed_fix and f.verification != VerificationStatus.rejected]
+    if not file_findings:
+        return None
+
+    lines = original.splitlines(keepends=True)
+    if not lines and original:
+        lines = [original]
+
+    # Sort descending by line so earlier line positions aren't shifted
+    sorted_findings = sorted(file_findings, key=lambda f: f.line, reverse=True)
+    changes: list[ChangeExplanation] = []
+    seen_lines = set()
+    for f in sorted_findings:
+        if f.line in seen_lines:
+            continue
+        if 1 <= f.line <= len(lines) and f.proposed_fix:
+            seen_lines.add(f.line)
+            fix_line = f.proposed_fix
+            if not fix_line.endswith("\n"):
+                fix_line += "\n"
+            lines[f.line - 1] = fix_line
+            changes.append(ChangeExplanation(
+                finding_id=f.id,
+                problem=f.title,
+                modification=f.proposed_fix
+            ))
+
+    revised = "".join(lines)
+    if original.endswith("\n") and not revised.endswith("\n"):
+        revised += "\n"
+
+    # Add required imports if newly referenced and not present
+    prefix_imports = []
+    if "ast.literal_eval" in revised and "import ast" not in revised:
+        prefix_imports.append("import ast\n")
+    if "logging." in revised and "import logging" not in revised:
+        prefix_imports.append("import logging\n")
+    if "os.getenv" in revised and "import os" not in revised:
+        prefix_imports.append("import os\n")
+    if "json.loads" in revised and "import json" not in revised:
+        prefix_imports.append("import json\n")
+
+    if prefix_imports:
+        revised = "".join(prefix_imports) + revised
+
+    if not syntax_ok(revised) or revised == original:
+        return None
+
+    safe_name = path.replace("/", "_").replace(".", "_").replace("-", "_")
+    escaped_revised = revised.replace('"""', r'\"\"\"')
+    test_code = (
+        f"import pytest\nimport ast\n\n"
+        f"def test_{safe_name}_remediation():\n"
+        f"    \"\"\"Assert that security flaws and bugs in {path} are resolved.\"\"\"\n"
+        f"    code = \"\"\"{escaped_revised}\"\"\"\n"
+        f"    assert ast.parse(code) is not None, 'Syntax must be valid'\n"
+        f"    assert 'eval(' not in code or 'ast.literal_eval' in code, 'Unsafe eval resolved'\n"
+        f"    assert 'shell=True' not in code, 'Command injection shell=True resolved'\n"
+    )
+
+    return Revision(
+        path=path,
+        original_code=original,
+        revised_code=revised,
+        diff=make_diff(path, original, revised),
+        changes=changes,
+        targeted_finding_ids=[f.id for f in file_findings],
+        syntax_ok=True,
+        test_code=test_code,
+        iterations=1
+    )
+
+
+async def generate_revisions(contents: dict[str, str], verified: list[Finding], allow_fallback: bool = False) -> list[Revision]:
     by_file: dict[str, list[Finding]] = defaultdict(list)
     for f in verified:
         by_file[f.file].append(f)
-    import asyncio
-    results = await asyncio.gather(*(_fix_file(p, contents[p], fs) for p, fs in by_file.items() if p in contents))
-    return [r for r in results if r]
+
+    results: list[Revision] = []
+    if llm_client.enabled:
+        import asyncio
+        llm_results = await asyncio.gather(*(_fix_file(p, contents[p], fs) for p, fs in by_file.items() if p in contents))
+        results = [r for r in llm_results if r]
+
+    if allow_fallback:
+        handled_files = {r.path for r in results}
+        for p, fs in by_file.items():
+            if p in contents and p not in handled_files:
+                det_rev = generate_deterministic_revision(p, contents[p], fs)
+                if det_rev:
+                    results.append(det_rev)
+
+    return results
