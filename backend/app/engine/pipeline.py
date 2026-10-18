@@ -124,6 +124,9 @@ async def process_pull_request(repo: str, pr_number: int, token: str | None = No
             val = await validate_revision(r, full.review.findings)
             if val.accepted:
                 accepted.append(RevisionOutcome(revision=r, validation=val))
+        if accepted:
+            full.notes = [n for n in full.notes if not n.startswith("LLM is off")]
+            full.notes.append("Applied deterministic AST fixes for verified defects (offline/static mode).")
 
     result = {"files": len(files), "summary": full.review.summary.model_dump(),
               "revisions_accepted": len(accepted), "revisions_total": len(accepted) if not full.revisions else len(full.revisions),

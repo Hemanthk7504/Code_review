@@ -117,3 +117,42 @@ async def test_cli_review_pr_runner(monkeypatch):
          patch("sys.argv", ["cli_review_pr", "--repo", "testorg/testrepo", "--pr", "12", "--token", "tok"]):
         exit_code = await async_main()
         assert exit_code == 0
+
+
+@pytest.mark.asyncio
+async def test_process_pull_request_fixes_relative_import_bug():
+    """Verify that relative-beyond-top-level import bugs are detected,
+    remediated, and trigger a revision PR even with LLM offline.
+    """
+    mock_gh = AsyncMock()
+    mock_gh.get_pull.return_value = {
+        "head": {"ref": "feature/main-fix", "sha": "sha_main_123"},
+        "base": {"ref": "main"}
+    }
+    mock_gh.list_pull_files.return_value = [
+        {
+            "filename": "backend/main.py",
+            "status": "modified",
+            "patch": "@@ -1,3 +1,3 @@\n+from .app.main import app"
+        }
+    ]
+    mock_gh.get_file.return_value = (
+        '"""Backend root entrypoint proxying to backend.app.main."""\nfrom .app.main import app\n\n__all__ = ["app"]\n',
+        "blob_sha_main"
+    )
+    mock_gh.create_pull.return_value = {
+        "html_url": "https://github.com/testorg/testrepo/pull/44",
+        "number": 44
+    }
+
+    with patch("backend.app.engine.pipeline.GitHubClient", return_value=mock_gh):
+        result = await process_pull_request("testorg/testrepo", 10, create_revision_pr=True)
+
+    assert result["summary"]["verified"] >= 1
+    assert result["revisions_accepted"] == 1
+    assert result["revision_pr"] == "https://github.com/testorg/testrepo/pull/44"
+    assert mock_gh.create_pull.called
+    assert mock_gh.commit_file.called
+    committed_code = mock_gh.commit_file.call_args[0][2]
+    assert "from .app.main" not in committed_code
+

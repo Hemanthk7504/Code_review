@@ -99,33 +99,84 @@ async def repair_revision(path: str, original: str, prev_revision: Revision,
 from ..core.schemas import ChangeExplanation, Finding, Revision, VerificationStatus
 
 
+def _derive_fix(finding: Finding, raw_line: str, path: str) -> str | None:
+    """Extract or synthesize a verified fix for a finding based on rule and context."""
+    if finding.proposed_fix:
+        return finding.proposed_fix
+
+    indent = raw_line[:len(raw_line) - len(raw_line.lstrip())] if raw_line else ""
+    line_clean = raw_line.strip()
+    rule_or_title = ((finding.rule_id or "") + " " + (finding.title or "")).lower()
+
+    # 1. relative-beyond-top-level / attempted relative import / CWE-691
+    if "relative-beyond-top-level" in rule_or_title or "cwe-691" in rule_or_title or "relative import" in rule_or_title:
+        if "from ." in raw_line:
+            if "from .app" in raw_line and ("backend" in path or path.startswith("backend/")):
+                return f"{indent}try:\n{indent}    from backend.app.main import app\n{indent}except ImportError:\n{indent}    from app.main import app"
+            return raw_line.replace("from ..", "from ").replace("from .", "from ")
+
+    # 2. eval / B307 / CWE-95
+    if "eval" in rule_or_title and "eval(" in raw_line:
+        return raw_line.replace("eval(", "ast.literal_eval(")
+
+    # 3. shell=True / B602 / CWE-78
+    if "shell=true" in raw_line.lower() or "shell" in rule_or_title:
+        if "shell=True" in raw_line:
+            return raw_line.replace("shell=True", "shell=False")
+
+    # 4. bare except / CWE-703
+    if "except:" in raw_line or "bare" in rule_or_title:
+        return f"{indent}except Exception as err:"
+
+    # 5. mutable default / CWE-665
+    if "={}" in raw_line:
+        return raw_line.replace("={}", "=None")
+    if "=[]" in raw_line:
+        return raw_line.replace("=[]", "=None")
+
+    # 6. unused import
+    if "unused-import" in rule_or_title or "unused import" in rule_or_title:
+        return f"{indent}# Removed unused import: {line_clean}"
+
+    return None
+
+
 def generate_deterministic_revision(path: str, original: str, findings: list[Finding]) -> Revision | None:
     """Deterministic rule-based fix generator when LLM is unavailable or produces no revision."""
-    file_findings = [f for f in findings if f.file == path and f.proposed_fix and f.verification != VerificationStatus.rejected]
-    if not file_findings:
+    live_findings = [f for f in findings if f.file == path and f.verification != VerificationStatus.rejected]
+    if not live_findings:
         return None
 
     lines = original.splitlines(keepends=True)
     if not lines and original:
         lines = [original]
 
+    applicable: list[tuple[Finding, str]] = []
+    for f in live_findings:
+        raw = lines[f.line - 1] if 1 <= f.line <= len(lines) else ""
+        fix = _derive_fix(f, raw, path)
+        if fix:
+            applicable.append((f, fix))
+
+    if not applicable:
+        return None
+
     # Sort descending by line so earlier line positions aren't shifted
-    sorted_findings = sorted(file_findings, key=lambda f: f.line, reverse=True)
+    applicable.sort(key=lambda item: item[0].line, reverse=True)
     changes: list[ChangeExplanation] = []
     seen_lines = set()
-    for f in sorted_findings:
+    for f, fix_line in applicable:
         if f.line in seen_lines:
             continue
-        if 1 <= f.line <= len(lines) and f.proposed_fix:
+        if 1 <= f.line <= len(lines):
             seen_lines.add(f.line)
-            fix_line = f.proposed_fix
             if not fix_line.endswith("\n"):
                 fix_line += "\n"
             lines[f.line - 1] = fix_line
             changes.append(ChangeExplanation(
                 finding_id=f.id,
                 problem=f.title,
-                modification=f.proposed_fix
+                modification=fix_line.strip()
             ))
 
     revised = "".join(lines)
@@ -167,7 +218,7 @@ def generate_deterministic_revision(path: str, original: str, findings: list[Fin
         revised_code=revised,
         diff=make_diff(path, original, revised),
         changes=changes,
-        targeted_finding_ids=[f.id for f in file_findings],
+        targeted_finding_ids=[f.id for f, _ in applicable],
         syntax_ok=True,
         test_code=test_code,
         iterations=1

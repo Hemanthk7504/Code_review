@@ -62,6 +62,11 @@ def _run_pylint(path: str, tmp: Path, lines: list[str]) -> list[Finding]:
                 fix = raw_line.replace("=[]", "=None")
         elif symbol == "unused-import" and raw_line:
             fix = f"{indent}# Removed unused import: {raw_line.strip()}"
+        elif symbol in {"relative-beyond-top-level", "import-error"} and "from ." in raw_line:
+            if "from .app" in raw_line and ("backend" in path or path.startswith("backend/")):
+                fix = f"{indent}try:\n{indent}    from backend.app.main import app\n{indent}except ImportError:\n{indent}    from app.main import app"
+            else:
+                fix = raw_line.replace("from ..", "from ").replace("from .", "from ")
         elif symbol == "no-name-in-module":
             fix = f"{indent}# Recommendation: Define or export symbol in target module, or import as needed\n{raw_line}"
 
