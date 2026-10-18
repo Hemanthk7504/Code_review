@@ -88,21 +88,40 @@ Features a full multi-agent cognitive architecture, static analysis synergy (Pyl
 
 ---
 
-## 🛠️ Module Overview
+## 🛠️ Modular Architecture Overview
+
+The repository is cleanly structured into separated `backend/` and `frontend/` modules:
 
 | Module | Purpose |
 |---|---|
-| `app/dashboard.py` | Embedded interactive HTML5/CSS3 glassmorphism web dashboard |
-| `app/secret_scanner.py` | High-entropy secret and credential scanning (AWS, OpenAI, JWT, private keys) |
-| `app/cwe_mapping.py` | Industry-standard CWE and OWASP Top 10 taxonomy mapping |
-| `app/sarif.py` | OASIS SARIF v2.1.0 standard JSON exporter |
-| `app/static_analysis.py` | AST checks (SQLi, subprocess, pickle), Pylint, Bandit, Radon |
-| `app/agents.py` | 7 specialist LLM agents with static context synergy |
-| `app/fixer.py` | Fix Generation Agent, companion pytest test generator, reflexion repair |
-| `app/revalidation.py` | Second-cycle verification gate and resolution validator |
-| `app/risk.py` | Risk-adaptive scoring, security posture grading (A+ to F), top risks |
-| `app/verifier.py` | Independent skeptical self-verification engine |
-| `app/github_client.py` | GitHub REST client for branch creation and PR submissions |
+| `backend/app/engine/pipeline.py` | Multi-agent orchestration, review, verification, and PR review engine |
+| `backend/app/engine/agents.py` | 7 specialist LLM agents with static context synergy |
+| `backend/app/engine/verifier.py` | Independent skeptical self-verification engine |
+| `backend/app/engine/risk.py` | Risk-adaptive scoring, security posture grading (A+ to F), top risks |
+| `backend/app/remediation/fixer.py` | Fix Generation Agent, deterministic AST engine, companion tests, reflexion repair |
+| `backend/app/remediation/revalidation.py` | Second-cycle verification gate and resolution validator |
+| `backend/app/scanners/static_analysis.py` | AST checks (SQLi, subprocess, pickle), Pylint, Bandit, Radon |
+| `backend/app/scanners/secret_scanner.py` | High-entropy secret and credential scanning (AWS, OpenAI, JWT, private keys) |
+| `backend/app/scanners/sca.py` | Software Composition Analysis, dependency CVE checks, CycloneDX SBOM generator |
+| `backend/app/services/policy_engine.py` | Enterprise quality gates, PR compliance rules, and pass/fail enforcement |
+| `backend/app/services/github_client.py` | GitHub REST client for branch creation, file commits, and PR submissions |
+| `backend/app/cli_review_pr.py` | Autonomous CLI review tool used by GitHub Actions and terminal runs |
+| `frontend/` | Modern web UI templates, glassmorphism styles, analytics, and interactive review tools |
+
+---
+
+## 🤖 GitHub Pull Request Auto-Revision Workflow
+
+When a Pull Request is opened or updated in your GitHub repository:
+1. **Defect & Vulnerability Detection**: CodeSentinel inspects all changed files using static analysis (Bandit, Pylint, AST, Secrets) and multi-agent AI.
+2. **Autonomous Remediation**: If security vulnerabilities or bugs (e.g., dynamic `eval`, command injection, bare `except`, mutable defaults, SQL injection, leaked secrets) are detected, verified code fixes are automatically generated.
+3. **Automated Revision PR**: CodeSentinel commits the remediated files to an isolated branch (`ai-review/pr-{pr_number}-{id}`) and automatically opens a **new Pull Request** with the corrected code and companion unit tests, leaving the original PR unchanged.
+4. **Autonomous GitHub Action & CLI**:
+   - Executes autonomously inside GitHub Actions via `.github/workflows/ai-code-review.yml`.
+   - Or runs locally via CLI:
+     ```bash
+     python -m backend.app.cli_review_pr --repo <owner/repo> --pr <pr_number> --token $GITHUB_TOKEN
+     ```
 
 ---
 
@@ -113,16 +132,16 @@ Features a full multi-agent cognitive architecture, static analysis synergy (Pyl
 source venv/bin/activate      # Windows: venv\Scripts\activate
 
 # 2. Install dependencies
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # 3. Configure environment variables (optional for AI mode; works offline in static mode)
 cp .env.example .env
 
 # 4. Start the server
-uvicorn app.main:app --reload
+uvicorn backend.main:app --reload
 ```
 
-- Open **Interactive Dashboard**: [http://127.0.0.1:8000/dashboard](http://127.0.0.1:8000/dashboard)
+- Open **Interactive Dashboard**: [http://127.0.0.1:8000/](http://127.0.0.1:8000/)
 - Open **Interactive API Docs**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
 
 ---
@@ -131,6 +150,7 @@ uvicorn app.main:app --reload
 
 | Method | Path | Description |
 |---|---|---|
+| `GET` | `/` | CodeSentinel Enterprise Web Portal |
 | `GET` | `/dashboard` | Interactive Web Dashboard (HTML UI) |
 | `GET` | `/api/v1/health` | Health status and engine readiness |
 | `GET` | `/api/v1/metrics` | System capabilities, registered agents, and active tools |
@@ -147,8 +167,9 @@ uvicorn app.main:app --reload
 
 ## 🧪 Testing
 
-Run the full automated test suite (all 18 core and advanced integration tests run without requiring a real LLM):
+Run the full automated test suite (all 40 unit, integration, and security tests run out of the box):
 
 ```bash
-pytest -v
+pytest tests/ -v
 ```
+
