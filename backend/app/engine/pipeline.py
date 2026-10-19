@@ -7,6 +7,7 @@ from uuid import uuid4
 from .analysis import analyze_files
 from ..core.config import get_settings
 from ..remediation.fixer import generate_revisions, repair_revision
+from ..services import jobs
 from ..services.github_client import GitHubClient, changed_lines_from_patch
 from .llm import llm_client
 from ..utils.report import review_comment, revision_pr_body
@@ -84,15 +85,24 @@ async def review_and_revise(files: list[FileInput]) -> FullResult:
 
 
 async def process_pull_request(repo: str, pr_number: int, token: str | None = None,
-                               create_revision_pr: bool = True) -> dict:
+                               create_revision_pr: bool = True,
+                               job_id: str | None = None) -> dict:
     """Used by the GitHub Action / webhook. Reviews a PR and opens a separate revision PR."""
     s = get_settings()
     gh = GitHubClient(token)
+
+    def _notify(stage: str, progress: int, msg: str):
+        if job_id:
+            jobs.update_job_progress(job_id, stage, progress, msg)
+
+    _notify("Fetching PR", 10, f"Querying GitHub API for repository '{repo}' Pull Request #{pr_number}...")
     pr = await gh.get_pull(repo, pr_number)
     head_ref, head_sha = pr["head"]["ref"], pr["head"]["sha"]
     if head_ref.startswith(s.bot_branch_prefix):
+        _notify("Skipped", 100, "PR branch was created by CodeSentinel bot; skipping review.")
         return {"skipped": "This PR was created by the review bot."}
 
+    _notify("Fetching Files", 20, "Extracting modified files and patch diffs...")
     files: list[FileInput] = []
     shas: dict[str, str] = {}
     for item in await gh.list_pull_files(repo, pr_number):
@@ -105,10 +115,13 @@ async def process_pull_request(repo: str, pr_number: int, token: str | None = No
                                changed_lines=changed_lines_from_patch(item.get("patch"))))
 
     if not files:
+        _notify("No Files", 100, "No modified Python source files found in this PR.")
         await gh.comment(repo, pr_number, "## 🤖 Automated Code Review\n\nNo Python files changed.")
         return {"files": 0}
 
+    _notify("Static & AI Scan", 35, f"Running Bandit, Pylint, AST & multi-agent specialists across {len(files)} Python file(s)...")
     full = await review_and_revise(files)
+    _notify("Consolidated Findings", 60, f"Identified {len(full.review.findings)} finding(s) (CVSS: {full.review.summary.overall_risk:.1f}, Grade: {full.review.summary.posture_grade}). Posting comments...")
     await gh.comment(repo, pr_number, review_comment(full.review))
 
     contents = {f.path: f.content for f in files}
@@ -119,6 +132,7 @@ async def process_pull_request(repo: str, pr_number: int, token: str | None = No
     # If full.revisions didn't produce revisions (e.g. LLM off, or failed to return usable code),
     # dynamically synthesize verified deterministic remediations for all detected bugs & security issues
     if not accepted and create_revision_pr and verified:
+        _notify("Synthesizing Fixes", 75, f"Synthesizing deterministic AST remediation for {len(verified)} verified defect(s)...")
         fallback_revs = await generate_revisions(contents, verified, allow_fallback=True)
         for r in fallback_revs:
             val = await validate_revision(r, full.review.findings)
@@ -135,14 +149,17 @@ async def process_pull_request(repo: str, pr_number: int, token: str | None = No
     if create_revision_pr and accepted:
         base_ref = pr.get("base", {}).get("ref", "main")
         branch = f"{s.bot_branch_prefix}pr-{pr_number}-{uuid4().hex[:6]}"
+        _notify("Creating Branch", 85, f"Creating fix branch '{branch}' targeting base '{base_ref}'...")
         await gh.create_branch(repo, branch, head_sha)
         for o in accepted:
             file_sha = shas.get(o.revision.path)
+            _notify("Committing Fixes", 90, f"Committing remediated code to {o.revision.path}...")
             await gh.commit_file(repo, o.revision.path, o.revision.revised_code,
                                  f"AI review: fix security & bug defects in {o.revision.path}", branch,
                                  file_sha)
         body = revision_pr_body(FullResult(review=full.review, revisions=accepted), pr_number)
         title = f"🤖 Automated Security & Bug Fixes for #{pr_number}"
+        _notify("Opening PR", 95, f"Dispatching new Pull Request with verified fixes...")
         try:
             new_pr = await gh.create_pull(repo, title, branch, head_ref, body)
         except Exception as err:
@@ -150,5 +167,8 @@ async def process_pull_request(repo: str, pr_number: int, token: str | None = No
             new_pr = await gh.create_pull(repo, title, branch, base_ref, body)
 
         result["revision_pr"] = new_pr.get("html_url")
+        _notify("Complete", 100, f"Opened automated revision Pull Request: {new_pr.get('html_url')}")
         await gh.comment(repo, pr_number, f"🤖 A revision PR with verified fixes was opened: {new_pr.get('html_url')}")
+    else:
+        _notify("Complete", 100, f"Review completed with {len(verified)} verified findings.")
     return result

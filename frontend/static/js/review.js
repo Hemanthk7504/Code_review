@@ -227,50 +227,206 @@ def safe_total(values: str, cache: dict = None) -> int:
 
   /* ==========================================================================
      Execution Pipeline with 7-Stage Animated Stepper
+  /* ==========================================================================
+     Execution Pipeline with Real-Time Terminal & Granular SSE Streaming
      ========================================================================== */
   async startReview(isFullLoop = false) {
     localStorage.removeItem('codesentinel_last_review');
     const payload = this.files.map(f => ({ path: f.name, content: f.content }));
     const stepperCard = document.getElementById('stepper-modal-overlay');
     const actionBtns = document.querySelectorAll('.review-action-btn');
+    const terminalBody = document.getElementById('pipeline-terminal-body');
+    const stopwatchEl = document.getElementById('pipeline-stopwatch');
+    const progressBar = document.getElementById('pipeline-progress-bar');
+    const percentText = document.getElementById('pipeline-percent-text');
+    const currentActionText = document.getElementById('pipeline-current-action');
+    const subheadText = document.getElementById('pipeline-subhead-text');
 
     actionBtns.forEach(b => b.disabled = true);
     if (stepperCard) stepperCard.classList.add('active');
 
-    // Sequence stages
-    const stageIds = ['stage-static', 'stage-ai', 'stage-consolidation', 'stage-risk', 'stage-verify', 'stage-fix', 'stage-reval'];
-    const animateStages = async () => {
-      for (let i = 0; i < stageIds.length; i++) {
-        if (!isFullLoop && i >= 5) break; // Fix & Reval only run during revise
-        const bubble = document.getElementById(stageIds[i]);
-        if (bubble) bubble.className = 'stage-bubble active';
-        await new Promise(r => setTimeout(r, 450));
-        if (bubble) bubble.className = 'stage-bubble done';
-      }
+    // Calculate total lines across files
+    const totalLines = this.files.reduce((acc, f) => acc + (f.content ? f.content.split('\n').length : 0), 0);
+    const filesEl = document.getElementById('live-metric-files');
+    const linesEl = document.getElementById('live-metric-lines');
+    const findingsEl = document.getElementById('live-metric-findings');
+    const gradeEl = document.getElementById('live-metric-grade');
+
+    if (filesEl) filesEl.innerText = this.files.length;
+    if (linesEl) linesEl.innerText = `~${totalLines}`;
+    if (findingsEl) findingsEl.innerText = '0';
+    if (gradeEl) gradeEl.innerText = '-';
+
+    // Clear and initialize terminal
+    if (terminalBody) {
+      terminalBody.innerHTML = '';
+    }
+
+    const startTime = Date.now();
+    const timerInterval = setInterval(() => {
+      if (!stopwatchEl) return;
+      const elapsed = Date.now() - startTime;
+      const seconds = Math.floor(elapsed / 1000);
+      const tenths = Math.floor((elapsed % 1000) / 100);
+      const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
+      const ss = String(seconds % 60).padStart(2, '0');
+      stopwatchEl.innerText = `${mm}:${ss}.${tenths}`;
+    }, 100);
+
+    const appendLog = (tag, text) => {
+      if (!terminalBody) return;
+      const now = new Date();
+      const ts = now.toTimeString().split(' ')[0];
+      const line = document.createElement('div');
+      line.className = 'terminal-line';
+      line.innerHTML = `
+        <span class="terminal-timestamp">[${ts}]</span>
+        <span class="terminal-tag terminal-tag-${tag}">${tag.toUpperCase()}</span>
+        <span>${escapeHtml(text)}</span>
+      `;
+      terminalBody.appendChild(line);
+      terminalBody.scrollTop = terminalBody.scrollHeight;
     };
 
-    const stagePromise = animateStages();
+    const escapeHtml = (str) => {
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    };
+
+    const stageMap = {
+      1: 'stage-static',
+      2: 'stage-ai',
+      3: 'stage-consolidation',
+      4: 'stage-risk',
+      5: 'stage-verify',
+      6: isFullLoop ? 'stage-fix' : 'stage-complete',
+      7: 'stage-reval',
+      8: 'stage-complete'
+    };
+
+    const updateStageUI = (stageNum, totalStages, name, progress, detail) => {
+      // Update progress bar & labels
+      if (progressBar) progressBar.style.width = `${progress}%`;
+      if (percentText) percentText.innerText = `${progress}%`;
+      if (currentActionText) currentActionText.innerText = detail || name;
+      if (subheadText) subheadText.innerText = `${name}: ${detail}`;
+
+      // Update bubbles
+      const allStageBubbles = ['stage-static', 'stage-ai', 'stage-consolidation', 'stage-risk', 'stage-verify', 'stage-fix', 'stage-reval', 'stage-complete'];
+      const targetBubbleId = stageMap[stageNum] || 'stage-static';
+
+      allStageBubbles.forEach(bId => {
+        const bubble = document.getElementById(bId);
+        if (!bubble) return;
+        const col = document.getElementById(bId.replace('stage-', 'stage-col-'));
+        
+        // Hide fix/reval columns if not full loop
+        if (!isFullLoop && (bId === 'stage-fix' || bId === 'stage-reval')) {
+          if (col) col.style.opacity = '0.3';
+        }
+
+        const bIndex = allStageBubbles.indexOf(bId);
+        const tIndex = allStageBubbles.indexOf(targetBubbleId);
+
+        if (bIndex < tIndex) {
+          bubble.className = 'stage-bubble done';
+        } else if (bIndex === tIndex) {
+          bubble.className = 'stage-bubble active';
+        } else {
+          bubble.className = 'stage-bubble';
+        }
+      });
+    };
+
+    appendLog('info', `🚀 Initialized cognitive pipeline for ${this.files.length} file(s) (${totalLines} lines of code)`);
+
+    let finalResult = null;
 
     try {
-      const result = isFullLoop ? await API.revise(payload) : await API.review(payload);
-      await stagePromise;
+      // 1. Try real SSE streaming endpoint first
+      const token = localStorage.getItem('codesentinel_api_key') || 'dev-local-key';
+      const streamRes = await fetch(`/api/v1/review/stream?auto_revise=${isFullLoop}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-API-Key': token
+        },
+        body: JSON.stringify({ files: payload })
+      });
+
+      if (streamRes.ok && streamRes.body) {
+        const reader = streamRes.body.getReader();
+        const decoder = new TextDecoder('utf-8');
+        let buffer = '';
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop(); // keep remainder
+
+          for (const rawEvent of lines) {
+            const trimmed = rawEvent.trim();
+            if (!trimmed.startsWith('data:')) continue;
+            try {
+              const data = JSON.parse(trimmed.replace(/^data:\s*/, ''));
+              let tag = 'info';
+              if (data.stage === 1) tag = 'static';
+              else if (data.stage === 2) tag = 'agent';
+              else if (data.stage === 3) tag = 'merge';
+              else if (data.stage === 4) tag = 'risk';
+              else if (data.stage === 5) tag = 'verify';
+              else if (data.stage === 6) tag = isFullLoop ? 'fix' : 'done';
+              else if (data.stage === 7) tag = 'gate';
+              else if (data.stage === 8) tag = 'done';
+
+              updateStageUI(data.stage, data.total_stages, data.name, data.progress, data.detail);
+              appendLog(tag, data.log || data.detail);
+
+              if (data.overall_risk !== undefined && gradeEl) {
+                gradeEl.innerText = data.posture_grade || 'B';
+              }
+              if (data.result) {
+                finalResult = data.result;
+                const reviewObj = finalResult.review || finalResult;
+                if (reviewObj && reviewObj.summary && findingsEl) {
+                  findingsEl.innerText = reviewObj.summary.verified || reviewObj.summary.total_findings || '0';
+                }
+              }
+            } catch (err) {
+              console.warn('Error parsing SSE chunk:', err);
+            }
+          }
+        }
+      }
+
+      // If SSE did not yield final result (e.g. streaming buffered or unsupported), fallback to standard API
+      if (!finalResult) {
+        appendLog('info', 'Connecting to review engine REST endpoint...');
+        finalResult = isFullLoop ? await API.revise(payload) : await API.review(payload);
+        updateStageUI(isFullLoop ? 8 : 6, isFullLoop ? 8 : 6, 'Complete', 100, 'Analysis complete!');
+      }
+
+      clearInterval(timerInterval);
+      appendLog('done', '🎉 Pipeline executed successfully! Packaging verification report...');
 
       // Save to localStorage including uploaded files for remediation synthesis
       localStorage.setItem('codesentinel_last_review', JSON.stringify({
         isFullLoop,
         timestamp: new Date().toISOString(),
         files: this.files,
-        data: result
+        data: finalResult
       }));
 
       // Append to review history
+      const reviewObj = finalResult.review || finalResult;
       const history = JSON.parse(localStorage.getItem('codesentinel_history') || '[]');
       history.unshift({
         id: Date.now().toString(36),
         timestamp: new Date().toISOString(),
         filesCount: this.files.length,
-        risk: isFullLoop ? result.review.summary.overall_risk : result.summary.overall_risk,
-        verified: isFullLoop ? result.review.summary.verified : result.summary.verified,
+        risk: reviewObj.summary ? reviewObj.summary.overall_risk : 0,
+        verified: reviewObj.summary ? reviewObj.summary.verified : 0,
         isFullLoop
       });
       localStorage.setItem('codesentinel_history', JSON.stringify(history.slice(0, 30)));
@@ -278,9 +434,13 @@ def safe_total(values: str, cache: dict = None) -> int:
       App.showToast('Analysis Complete', 'Redirecting to verification report...', 'success');
       setTimeout(() => {
         window.location.href = isFullLoop ? '/review/results?tab=revisions' : '/review/results';
-      }, 500);
+      }, 700);
     } catch (err) {
-      if (stepperCard) stepperCard.classList.remove('active');
+      clearInterval(timerInterval);
+      appendLog('error', `Execution failed: ${err.message}`);
+      if (stepperCard) {
+        setTimeout(() => stepperCard.classList.remove('active'), 2000);
+      }
       actionBtns.forEach(b => b.disabled = false);
       App.showToast('Execution Error', err.message, 'error');
     }
@@ -482,17 +642,62 @@ def safe_total(values: str, cache: dict = None) -> int:
     this.activeResultsTab = tabName;
     const btnFindings = document.getElementById('tab-btn-findings');
     const btnRevisions = document.getElementById('tab-btn-revisions');
+    const btnAudit = document.getElementById('tab-btn-audit');
     const contentFindings = document.getElementById('findings-tab-content');
     const contentRevisions = document.getElementById('revisions-tab-content');
+    const contentAudit = document.getElementById('audit-tab-content');
 
     if (btnFindings) btnFindings.classList.toggle('active', tabName === 'findings');
     if (btnRevisions) btnRevisions.classList.toggle('active', tabName === 'revisions');
+    if (btnAudit) btnAudit.classList.toggle('active', tabName === 'audit');
 
     if (contentFindings) contentFindings.style.display = tabName === 'findings' ? 'block' : 'none';
     if (contentRevisions) contentRevisions.style.display = tabName === 'revisions' ? 'block' : 'none';
+    if (contentAudit) contentAudit.style.display = tabName === 'audit' ? 'block' : 'none';
 
     if (tabName === 'revisions') {
       this.renderRevisionsSection();
+    } else if (tabName === 'audit') {
+      this.renderAuditSection();
+    }
+  },
+
+  renderAuditSection() {
+    const s = (this.currentResult && this.currentResult.summary) || {};
+    const verifiedCount = s.verified !== undefined ? s.verified : 0;
+    const rejectedCount = s.rejected !== undefined ? s.rejected : 0;
+    const totalCount = verifiedCount + rejectedCount;
+    const ratio = totalCount > 0 ? Math.round((verifiedCount / totalCount) * 100) : 100;
+
+    const tsBadge = document.getElementById('audit-timestamp-badge');
+    if (tsBadge) tsBadge.innerText = `AUDITED AT: ${new Date().toLocaleTimeString()}`;
+
+    const verifiedEl = document.getElementById('audit-verified-count');
+    if (verifiedEl) verifiedEl.innerText = verifiedCount;
+
+    const rejectedEl = document.getElementById('audit-rejected-count');
+    if (rejectedEl) rejectedEl.innerText = rejectedCount;
+
+    const ratioEl = document.getElementById('audit-corroboration-ratio');
+    if (ratioEl) ratioEl.innerText = `${ratio}%`;
+
+    const aiStatusBadge = document.getElementById('audit-ai-status-badge');
+    if (aiStatusBadge) {
+      aiStatusBadge.innerText = s.llm_used ? 'AI COGNITIVE' : 'STATIC + AST ONLY';
+      aiStatusBadge.className = 'badge ' + (s.llm_used ? 'badge-verified' : 'badge-neutral');
+    }
+
+    const remEngineEl = document.getElementById('audit-remediation-engine');
+    if (remEngineEl) {
+      const isStaticOnly = !s.llm_used || (this.notes && this.notes.some(n => n.includes('LLM is off')));
+      remEngineEl.innerText = isStaticOnly ? 'Deterministic AST Visitor' : 'AI Specialist + AST Synthesis';
+    }
+
+    const gateBadge = document.getElementById('audit-gate-badge');
+    if (gateBadge) {
+      const hasFailedOutcome = this.allOutcomes && this.allOutcomes.some(o => o.validation && !o.validation.accepted);
+      gateBadge.innerText = hasFailedOutcome ? 'WARNING' : 'PASSED (0 REGRESSIONS)';
+      gateBadge.className = 'badge ' + (hasFailedOutcome ? 'badge-warning' : 'badge-verified');
     }
   },
 

@@ -407,6 +407,136 @@
 }
 
 /* ==========================================================================
+   Real-Time Pipeline Terminal & Execution Console
+   ========================================================================== */
+.pipeline-terminal {
+  background: #090d16;
+  border: 1px solid #1e293b;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  font-family: var(--font-mono);
+  font-size: 11.5px;
+  margin-top: var(--space-md);
+}
+
+.terminal-header {
+  background: #0f172a;
+  padding: 8px 12px;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.terminal-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.terminal-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+}
+.terminal-dot-red { background: #ef4444; }
+.terminal-dot-yellow { background: #f59e0b; }
+.terminal-dot-green { background: #10b981; }
+
+.terminal-title {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.terminal-body {
+  padding: 12px;
+  max-height: 200px;
+  overflow-y: auto;
+  color: #e2e8f0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.terminal-line {
+  line-height: 1.5;
+  word-break: break-word;
+  animation: fadeIn 150ms ease-in-out;
+}
+
+.terminal-timestamp {
+  color: #64748b;
+  margin-right: 6px;
+}
+
+.terminal-tag {
+  display: inline-block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  margin-right: 6px;
+  text-transform: uppercase;
+}
+
+.terminal-tag-static { background: rgba(59, 130, 246, 0.2); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.3); }
+.terminal-tag-agent { background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+.terminal-tag-merge { background: rgba(14, 165, 233, 0.2); color: #38bdf8; border: 1px solid rgba(14, 165, 233, 0.3); }
+.terminal-tag-risk { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.terminal-tag-verify { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+.terminal-tag-fix { background: rgba(236, 72, 153, 0.2); color: #f472b6; border: 1px solid rgba(236, 72, 153, 0.3); }
+.terminal-tag-gate { background: rgba(99, 102, 241, 0.2); color: #818cf8; border: 1px solid rgba(99, 102, 241, 0.3); }
+.terminal-tag-done { background: rgba(34, 197, 94, 0.25); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.4); }
+.terminal-tag-error { background: rgba(239, 68, 68, 0.25); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+.terminal-tag-info { background: rgba(100, 116, 139, 0.2); color: #94a3b8; border: 1px solid rgba(100, 116, 139, 0.3); }
+
+.terminal-cursor {
+  display: inline-block;
+  width: 7px;
+  height: 13px;
+  background: var(--color-primary);
+  vertical-align: text-bottom;
+  animation: terminalBlink 1s infinite;
+}
+
+@keyframes terminalBlink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes pulseBubble {
+  0%, 100% { transform: scale(1); box-shadow: 0 0 10px var(--color-primary-glow); }
+  50% { transform: scale(1.1); box-shadow: 0 0 18px var(--color-primary-glow); }
+}
+
+.live-metrics-bar {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+  flex-wrap: wrap;
+}
+
+.live-metric-chip {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 4px 8px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--color-text-secondary);
+}
+
+.live-metric-chip strong {
+  color: var(--color-text);
+}
+
+/* ==========================================================================
    Circular Risk Gauge
    ========================================================================== */
 .gauge-wrapper {

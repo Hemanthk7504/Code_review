@@ -174,6 +174,9 @@ class JobInfo(BaseModel):
     status: str  # queued | running | done | failed
     detail: str = ""
     result: Optional[dict] = None
+    progress: int = 0
+    current_stage: str = ""
+    logs: list[str] = Field(default_factory=list)
 
 
 # ---------- Advanced Feature Models ----------

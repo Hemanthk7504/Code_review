@@ -89,28 +89,103 @@ const JobsController = {
     card.style.display = 'block';
     document.getElementById('job-id-text').innerText = job.job_id;
 
+    const isRunning = job.status === 'running';
+    const isDone = job.status === 'done';
+    const isFailed = job.status === 'failed';
+
     const chip = document.getElementById('job-status-chip');
     if (chip) {
-      chip.className = `badge badge-${job.status === 'done' ? 'verified' : (job.status === 'failed' ? 'critical' : 'medium')}`;
-      chip.innerHTML = job.status === 'running' ?
-        '<span class="dot-indicator dot-warning live-pulse"></span> Running' :
+      chip.className = `badge badge-${isDone ? 'verified' : (isFailed ? 'critical' : 'medium')}`;
+      chip.innerHTML = isRunning ?
+        '<span class="dot-indicator dot-warning live-pulse"></span> RUNNING' :
         job.status.toUpperCase();
     }
 
-    const detailEl = document.getElementById('job-detail-text');
-    if (detailEl) detailEl.innerText = job.detail || (job.status === 'running' ? 'Processing AST, AI agents and re-validation...' : 'Completed');
+    const stageBadge = document.getElementById('job-stage-badge');
+    if (stageBadge) {
+      stageBadge.innerText = job.current_stage || (isDone ? 'Completed' : (isRunning ? 'Processing' : 'Queued'));
+      stageBadge.className = `badge badge-${isDone ? 'verified' : (isFailed ? 'critical' : 'primary')}`;
+    }
 
-    // Show result link if PR was created
+    const pollStatus = document.getElementById('job-poll-status');
+    if (pollStatus) {
+      pollStatus.innerText = isDone ? 'Job finished.' : (isFailed ? 'Job terminated with error.' : 'Polling GitHub background worker (every 3s)...');
+    }
+
+    const liveInd = document.getElementById('job-live-indicator');
+    if (liveInd) {
+      liveInd.className = `dot-indicator dot-${isDone ? 'success' : (isFailed ? 'critical' : 'warning live-pulse')}`;
+    }
+
+    const progress = Math.max(5, Math.min(100, job.progress !== undefined ? job.progress : (isDone ? 100 : 25)));
+    const progressBar = document.getElementById('job-progress-bar');
+    const progressPercent = document.getElementById('job-progress-percent');
+    if (progressBar) progressBar.style.width = `${progress}%`;
+    if (progressPercent) progressPercent.innerText = `${progress}%`;
+
+    const detailEl = document.getElementById('job-detail-text');
+    if (detailEl) {
+      detailEl.innerText = job.detail || (isRunning ? 'Processing AST, AI agents, and automated PR verification...' : 'Completed');
+    }
+
+    // Update 7 PR Stage Bubbles based on progress
+    const stageThresholds = [10, 20, 35, 50, 70, 85, 100];
+    for (let i = 1; i <= 7; i++) {
+      const bubble = document.getElementById(`job-stage-bubble-${i}`);
+      if (!bubble) continue;
+      const thresh = stageThresholds[i - 1];
+      if (progress >= thresh) {
+        bubble.className = progress > thresh || isDone ? 'stage-bubble done' : 'stage-bubble active';
+      } else {
+        bubble.className = 'stage-bubble';
+      }
+    }
+
+    // Update Terminal Feed
+    const terminal = document.getElementById('job-terminal-body');
+    if (terminal && job.logs && job.logs.length > 0) {
+      terminal.innerHTML = job.logs.map(logStr => {
+        const match = logStr.match(/^\[(.*?)\]\s*(.*)$/);
+        const ts = match ? match[1] : '00:00:00';
+        const msg = match ? match[2] : logStr;
+        let tag = 'info';
+        if (msg.includes('Static') || msg.includes('Bandit') || msg.includes('Pylint')) tag = 'static';
+        else if (msg.includes('AI') || msg.includes('Agent') || msg.includes('specialist')) tag = 'agent';
+        else if (msg.includes('Risk') || msg.includes('CVSS') || msg.includes('Finding')) tag = 'risk';
+        else if (msg.includes('Verify') || msg.includes('verified')) tag = 'verify';
+        else if (msg.includes('Fix') || msg.includes('remediation') || msg.includes('AST')) tag = 'fix';
+        else if (msg.includes('PR') || msg.includes('GitHub') || msg.includes('branch')) tag = 'gate';
+        else if (msg.includes('Complete') || msg.includes('successfully') || msg.includes('Opened')) tag = 'done';
+        else if (msg.includes('Error') || msg.includes('fail')) tag = 'error';
+
+        const safeMsg = String(msg).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `
+          <div class="terminal-line">
+            <span class="terminal-timestamp">[${ts}]</span>
+            <span class="terminal-tag terminal-tag-${tag}">${tag.toUpperCase()}</span>
+            <span>${safeMsg}</span>
+          </div>
+        `;
+      }).join('');
+      terminal.scrollTop = terminal.scrollHeight;
+    }
+
+    // Show result link & banner if PR was created
     const resultBox = document.getElementById('job-result-container');
+    const prBanner = document.getElementById('job-pr-banner');
     const prLink = document.getElementById('job-pr-link');
+
     if (resultBox && job.result) {
       resultBox.style.display = 'block';
-      if (prLink && job.result.revision_pr) {
-        prLink.href = job.result.revision_pr;
-        prLink.style.display = 'inline-flex';
-        prLink.innerText = `View Automated PR: ${job.result.revision_pr}`;
+      if (job.result.revision_pr) {
+        if (prBanner) prBanner.style.display = 'block';
+        if (prLink) {
+          prLink.href = job.result.revision_pr;
+          prLink.style.display = 'inline-flex';
+        }
       }
-      document.getElementById('job-json-raw').innerText = JSON.stringify(job.result, null, 2);
+      const rawEl = document.getElementById('job-json-raw');
+      if (rawEl) rawEl.innerText = JSON.stringify(job.result, null, 2);
     }
   },
 

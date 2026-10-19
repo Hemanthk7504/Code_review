@@ -71,47 +71,121 @@
   </div>
 </div>
 
-<!-- Stepper Overlay Modal during Execution -->
+<!-- Enhanced Interactive Real-Time Pipeline Terminal Modal -->
 <div class="drawer-backdrop" id="stepper-modal-overlay">
-  <div class="card" style="width: 580px; max-width: 90vw; margin: 15vh auto; background: var(--color-surface-elevated); border: 1px solid var(--color-border-strong); box-shadow: var(--shadow-elevated);">
-    <div style="text-align: center; margin-bottom: 24px;">
-      <div class="spin" style="width: 36px; height: 36px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--color-primary); border-radius: 50%; margin: 0 auto 14px;"></div>
-      <h3 style="font-size: var(--text-lg); font-weight: 700;">Cognitive Review Pipeline In Progress</h3>
-      <p style="font-size: var(--text-xs); color: var(--color-text-muted); margin-top: 4px;">Running static rules, querying AI specialists, verifying claims, and generating validated diffs...</p>
+  <div class="card" style="width: 720px; max-width: 95vw; margin: 8vh auto; background: var(--color-surface-elevated); border: 1px solid var(--color-border-strong); box-shadow: var(--shadow-elevated); padding: var(--space-xl);">
+    <!-- Header with Live Pulse and Stopwatch -->
+    <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--space-lg); flex-wrap: wrap; gap: 8px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div class="spin" style="width: 28px; height: 28px; border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--color-primary); border-radius: 50%;"></div>
+        <div>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <h3 style="font-size: var(--text-lg); font-weight: 800; margin: 0;">Cognitive Execution Pipeline</h3>
+            <span class="badge badge-verified" style="font-size: 10px; padding: 2px 8px; display: inline-flex; align-items: center; gap: 4px;">
+              <span class="dot-indicator dot-success live-pulse" style="width: 6px; height: 6px;"></span>
+              <span>LIVE</span>
+            </span>
+          </div>
+          <p id="pipeline-subhead-text" style="font-size: var(--text-xs); color: var(--color-text-secondary); margin: 3px 0 0 0;">
+            Running static tools, querying AI specialists, verifying claims, and generating validated diffs...
+          </p>
+        </div>
+      </div>
+      <div style="text-align: right; font-family: var(--font-mono); font-size: var(--text-xs); color: var(--color-primary); background: var(--color-surface); padding: 4px 10px; border-radius: var(--radius-sm); border: 1px solid var(--color-border);">
+        <span style="color: var(--color-text-muted);">ELAPSED:</span> <strong id="pipeline-stopwatch">00:00.0</strong>
+      </div>
     </div>
 
-    <div class="pipeline-stages-container" style="margin-bottom: 24px;">
-      <div class="pipeline-stage-item">
+    <!-- 8-Stage Visual Stepper -->
+    <div class="pipeline-stages-container" style="margin-bottom: var(--space-md); overflow-x: auto; padding-bottom: 4px;">
+      <div class="pipeline-stage-item" id="stage-col-static">
         <div class="stage-bubble" id="stage-static">1</div>
         <div class="stage-name">Static</div>
       </div>
-      <div class="pipeline-stage-item">
+      <div class="pipeline-stage-item" id="stage-col-ai">
         <div class="stage-bubble" id="stage-ai">2</div>
-        <div class="stage-name">Agents</div>
+        <div class="stage-name">AI Agents</div>
       </div>
-      <div class="pipeline-stage-item">
+      <div class="pipeline-stage-item" id="stage-col-consolidation">
         <div class="stage-bubble" id="stage-consolidation">3</div>
-        <div class="stage-name">Merge</div>
+        <div class="stage-name">Corroborate</div>
       </div>
-      <div class="pipeline-stage-item">
+      <div class="pipeline-stage-item" id="stage-col-risk">
         <div class="stage-bubble" id="stage-risk">4</div>
-        <div class="stage-name">Risk</div>
+        <div class="stage-name">CVSS / CWE</div>
       </div>
-      <div class="pipeline-stage-item">
+      <div class="pipeline-stage-item" id="stage-col-verify">
         <div class="stage-bubble" id="stage-verify">5</div>
-        <div class="stage-name">Verify</div>
+        <div class="stage-name">Self-Verify</div>
       </div>
-      <div class="pipeline-stage-item">
+      <div class="pipeline-stage-item" id="stage-col-fix">
         <div class="stage-bubble" id="stage-fix">6</div>
-        <div class="stage-name">Fix</div>
+        <div class="stage-name">Remediate</div>
       </div>
-      <div class="pipeline-stage-item">
+      <div class="pipeline-stage-item" id="stage-col-reval">
         <div class="stage-bubble" id="stage-reval">7</div>
-        <div class="stage-name">Reval</div>
+        <div class="stage-name">Safety Gates</div>
+      </div>
+      <div class="pipeline-stage-item" id="stage-col-complete">
+        <div class="stage-bubble" id="stage-complete">8</div>
+        <div class="stage-name">Complete</div>
       </div>
     </div>
 
-    <div class="skeleton skeleton-card" style="height: 16px; width: 100%; border-radius: var(--radius-full);"></div>
+    <!-- Dynamic Progress Track -->
+    <div class="pipeline-track" style="height: 6px; margin: 12px 0 6px;">
+      <div class="pipeline-track-fill" id="pipeline-progress-bar" style="width: 5%;"></div>
+    </div>
+    <div style="display: flex; justify-content: space-between; font-size: 11px; color: var(--color-text-muted); margin-bottom: var(--space-md);">
+      <span id="pipeline-current-action">Initializing static scanners and syntax tree parsers...</span>
+      <span id="pipeline-percent-text" style="font-weight: 700; color: var(--color-primary);">5%</span>
+    </div>
+
+    <!-- Live Metric Chips Row -->
+    <div class="live-metrics-bar" style="margin-bottom: var(--space-md);">
+      <div class="live-metric-chip">
+        <span>Files:</span>
+        <strong id="live-metric-files">1</strong>
+      </div>
+      <div class="live-metric-chip">
+        <span>Lines:</span>
+        <strong id="live-metric-lines">~0</strong>
+      </div>
+      <div class="live-metric-chip">
+        <span>Scanners:</span>
+        <strong id="live-metric-scanners">Bandit, Pylint, AST, Secrets</strong>
+      </div>
+      <div class="live-metric-chip">
+        <span>Findings:</span>
+        <strong id="live-metric-findings">0</strong>
+      </div>
+      <div class="live-metric-chip">
+        <span>Posture:</span>
+        <strong id="live-metric-grade">-</strong>
+      </div>
+    </div>
+
+    <!-- Real-Time Activity Log Terminal -->
+    <div class="pipeline-terminal">
+      <div class="terminal-header">
+        <div class="terminal-dots">
+          <div class="terminal-dot terminal-dot-red"></div>
+          <div class="terminal-dot terminal-dot-yellow"></div>
+          <div class="terminal-dot terminal-dot-green"></div>
+        </div>
+        <div class="terminal-title">
+          <span>codesentinel-stream // execution logs</span>
+        </div>
+        <div style="font-size: 10px; color: #64748b;">Live Output</div>
+      </div>
+      <div class="terminal-body" id="pipeline-terminal-body">
+        <div class="terminal-line">
+          <span class="terminal-timestamp">[00:00:00]</span>
+          <span class="terminal-tag terminal-tag-info">SYSTEM</span>
+          <span>Pipeline execution worker initialized. Listening on event stream...</span>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
