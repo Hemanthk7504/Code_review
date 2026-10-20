@@ -913,14 +913,14 @@ const App = {
     const backdrop = document.getElementById('process-guide-backdrop');
     if (!drawer) return;
 
-    if (pageKey) {
-      this.switchGuideTab(pageKey);
-    } else {
-      const bodyPage = document.body.getAttribute('data-active-page');
-      if (bodyPage && this.processGuideData[bodyPage]) {
-        this.switchGuideTab(bodyPage);
-      }
+    const nav = document.getElementById('guide-drawer-nav');
+    if (!nav || !nav.children.length) {
+      this.initProcessGuide();
     }
+
+    const bodyPage = document.body.getAttribute('data-active-page');
+    const targetKey = pageKey || (bodyPage && this.processGuideData[bodyPage] ? bodyPage : (this.activeGuidePage || 'dashboard'));
+    this.switchGuideTab(this.processGuideData[targetKey] ? targetKey : 'dashboard');
 
     drawer.classList.add('open');
     if (backdrop) backdrop.classList.add('active');

@@ -58,3 +58,8 @@ app.include_router(auth_router)
 # Mount Web UI routes (/, /dashboard, /review/new, /revisions, etc.)
 app.include_router(ui_router)
 
+@app.get("/health")
+@app.get("/api/health")
+def root_health():
+    return {"status": "ok", "app": get_settings().app_name}
+

@@ -138,3 +138,187 @@ const EnterpriseData = {
     }
   ]
 };
+
+const SampleReviewData = {
+  isFullLoop: true,
+  timestamp: new Date().toISOString(),
+  files: [
+    {
+      name: 'backend/database.py',
+      content: `import subprocess
+import sqlite3
+
+def query_user(username: str, cache: dict = {}):
+    conn = sqlite3.connect("production.db")
+    cursor = conn.cursor()
+    # SQL injection via string interpolation
+    cursor.execute(f"SELECT * FROM users WHERE username = '{username}'")
+    return cursor.fetchall()
+
+def export_db(dbname: str):
+    # Dangerous subprocess execution with shell=True
+    subprocess.run(f"pg_dump -U admin {dbname}", shell=True)
+`
+    },
+    {
+      name: 'backend/auth.py',
+      content: `import os
+import requests
+
+# Hardcoded AWS access credentials in plaintext
+AWS_ACCESS_KEY = "AKIA1234567890EXAMPLEKEY"
+AWS_SECRET_KEY = "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY"
+
+def verify_token(token: str):
+    # Missing explicit timeout parameter on remote network request
+    response = requests.get("https://oauth.provider.internal/verify?token=" + token)
+    return response.json()
+`
+    }
+  ],
+  data: {
+    review: {
+      summary: {
+        files_analyzed: 2,
+        total_findings: 5,
+        verified: 4,
+        uncertain: 0,
+        rejected: 1,
+        overall_risk: 54.5,
+        llm_used: true,
+        posture_grade: 'B',
+        by_severity: {
+          critical: 1,
+          high: 2,
+          medium: 1,
+          low: 1
+        },
+        by_category: {
+          security: 3,
+          bug: 1,
+          performance: 1
+        },
+        cwe_counts: {
+          'CWE-89': 1,
+          'CWE-798': 1,
+          'CWE-78': 1,
+          'CWE-400': 1,
+          'CWE-665': 1
+        },
+        top_risks: [
+          'CRITICAL: SQL Injection via string interpolation [CWE-89] at backend/database.py:9 (risk 88.0)',
+          'HIGH: Hardcoded AWS access credentials [CWE-798] at backend/auth.py:5 (risk 75.0)',
+          'HIGH: Arbitrary Command Injection (shell=True) [CWE-78] at backend/database.py:15 (risk 68.0)'
+        ]
+      },
+      findings: [
+        {
+          id: 'finding-cwe-89-sqli',
+          title: 'SQL Injection via unescaped string formatting',
+          description: 'User-controlled parameter is directly formatted into an SQL query without parameterized binding, allowing arbitrary database exfiltration.',
+          severity: 'critical',
+          category: 'security',
+          cwe: 'CWE-89',
+          file: 'backend/database.py',
+          line: 9,
+          snippet: 'cursor.execute(f"SELECT * FROM users WHERE username = \'{username}\'")',
+          verification: 'verified',
+          confidence: 0.98,
+          corroborating_sources: ['Bandit B608', 'Security Auditor Agent', 'AST Taint Tracker'],
+          risk_score: 88.0,
+          explanation: 'SQL injection occurs when untrusted input is directly concatenated into an SQL statement. Attackers can bypass authentication or extract sensitive tables using UNION injections.',
+          proposed_fix: 'cursor.execute("SELECT * FROM users WHERE username = ?", (username,))'
+        },
+        {
+          id: 'finding-cwe-798-hardcoded-secret',
+          title: 'Hardcoded Plaintext AWS Access Key & Secret',
+          description: 'High-entropy plaintext AWS credentials detected directly in source code. Violates secrets management zero-tolerance policy.',
+          severity: 'high',
+          category: 'security',
+          cwe: 'CWE-798',
+          file: 'backend/auth.py',
+          line: 5,
+          snippet: 'AWS_ACCESS_KEY = "AKIA1234567890EXAMPLEKEY"',
+          verification: 'verified',
+          confidence: 0.96,
+          corroborating_sources: ['Shannon Entropy Scanner', 'Bandit B105', 'Security Auditor Agent'],
+          risk_score: 75.0,
+          explanation: 'Hardcoding cloud access keys in source control allows anyone with repository read permissions to compromise AWS infrastructure.',
+          proposed_fix: 'AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID", "")\nAWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY", "")'
+        },
+        {
+          id: 'finding-cwe-78-command-injection',
+          title: 'Arbitrary Command Injection via subprocess with shell=True',
+          description: 'Spawning a subshell with shell=True allows unescaped shell metacharacters to execute arbitrary system commands.',
+          severity: 'high',
+          category: 'security',
+          cwe: 'CWE-78',
+          file: 'backend/database.py',
+          line: 15,
+          snippet: 'subprocess.run(f"pg_dump -U admin {dbname}", shell=True)',
+          verification: 'verified',
+          confidence: 0.95,
+          corroborating_sources: ['Bandit B602', 'AST Node Inspector', 'Security Auditor Agent'],
+          risk_score: 68.0,
+          explanation: 'Using shell=True invokes /bin/sh or cmd.exe. An attacker supplying a database name like "prod; rm -rf /" executes arbitrary commands.',
+          proposed_fix: 'subprocess.run(["pg_dump", "-U", "admin", dbname], shell=False, check=True)'
+        },
+        {
+          id: 'finding-cwe-400-missing-timeout',
+          title: 'HTTP request without explicit connection timeout',
+          description: 'Calling external HTTP endpoint without explicit timeout can lead to thread exhaustion and DoS.',
+          severity: 'medium',
+          category: 'performance',
+          cwe: 'CWE-400',
+          file: 'backend/auth.py',
+          line: 10,
+          snippet: 'response = requests.get("https://oauth.provider.internal/verify?token=" + token)',
+          verification: 'verified',
+          confidence: 0.90,
+          corroborating_sources: ['Pylint AST', 'Performance Specialist'],
+          risk_score: 35.0,
+          explanation: 'Network requests without timeouts can hang indefinitely if the remote server fails to respond, locking worker processes.',
+          proposed_fix: 'response = requests.get("https://oauth.provider.internal/verify?token=" + token, timeout=10.0)'
+        },
+        {
+          id: 'finding-cwe-665-mutable-default',
+          title: 'Mutable default argument in function signature',
+          description: 'Default parameter cache={} is shared across all function calls, leading to cross-request state leakage.',
+          severity: 'low',
+          category: 'bug',
+          cwe: 'CWE-665',
+          file: 'backend/database.py',
+          line: 4,
+          snippet: 'def query_user(username: str, cache: dict = {}):',
+          verification: 'verified',
+          confidence: 0.94,
+          corroborating_sources: ['Pylint W0102', 'Logic Bug Detector'],
+          risk_score: 18.0,
+          explanation: 'In Python, default arguments are evaluated only once at definition time, meaning mutations to cache persist across subsequent invocations.',
+          proposed_fix: 'def query_user(username: str, cache: dict = None):\n    if cache is None:\n        cache = {}'
+        },
+        {
+          id: 'finding-refuted-eval-fp',
+          title: 'AST literal_eval flagged as unsafe eval (Refuted)',
+          description: 'Initial scanner flagged eval-like pattern, but skeptical verification confirmed safe ast.literal_eval usage.',
+          severity: 'high',
+          category: 'security',
+          cwe: 'CWE-95',
+          file: 'backend/database.py',
+          line: 20,
+          snippet: 'data = ast.literal_eval(payload_str)',
+          verification: 'rejected',
+          confidence: 0.10,
+          corroborating_sources: ['Skeptical Verifier (Refuted)'],
+          risk_score: 0.0,
+          explanation: 'ast.literal_eval safely parses Python literals without evaluating arbitrary bytecode or executing system commands.',
+          proposed_fix: 'data = ast.literal_eval(payload_str)'
+        }
+      ]
+    },
+    notes: [
+      'Multi-agent consensus corroborated 4 findings.',
+      'Skeptical verifier successfully refuted 1 false positive alert.'
+    ]
+  }
+};

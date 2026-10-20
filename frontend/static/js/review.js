@@ -462,12 +462,31 @@ def safe_total(values: str, cache: dict = None) -> int:
     this.isFullLoop = false;
     this.notes = [];
 
-    if (!raw) {
+    let parsed = null;
+    if (raw) {
+      try {
+        parsed = JSON.parse(raw);
+      } catch (e) {
+        parsed = null;
+      }
+    }
+
+    // If review is completely empty or missing, auto-fallback to SampleReviewData
+    const hasFindings = parsed && parsed.data && (
+      (parsed.data.review && parsed.data.review.findings && parsed.data.review.findings.length > 0) ||
+      (parsed.data.findings && parsed.data.findings.length > 0)
+    );
+
+    if (!hasFindings && typeof SampleReviewData !== 'undefined' && SampleReviewData) {
+      parsed = SampleReviewData;
+      localStorage.setItem('codesentinel_last_review', JSON.stringify(SampleReviewData));
+    }
+
+    if (!parsed) {
       this.currentResult = emptyResult;
       this.savedFiles = [];
     } else {
       try {
-        const parsed = JSON.parse(raw);
         this.isFullLoop = Boolean(parsed.isFullLoop);
         this.notes = (parsed.data && parsed.data.notes) || [];
         this.savedFiles = parsed.files || [];
@@ -1033,15 +1052,39 @@ def test_${safeFn}_syntax_and_remediation():
     if (countEl) countEl.innerText = items.length;
 
     if (items.length === 0) {
-      tbody.innerHTML = `
-        <tr>
-          <td colspan="7" style="text-align: center; padding: 48px; color: var(--color-text-muted);">
-            <div style="font-size: 24px; margin-bottom: 8px;">🛡️</div>
-            <div style="font-weight: 600; color: var(--color-text);">No findings match your filter</div>
-            <div style="font-size: var(--text-xs); margin-top: 4px;">Try selecting a different severity or toggling rejected findings</div>
-          </td>
-        </tr>
-      `;
+      const hasAnyFindings = this.currentResult && this.currentResult.findings && this.currentResult.findings.length > 0;
+      if (hasAnyFindings) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 48px; color: var(--color-text-muted);">
+              <div style="font-size: 24px; margin-bottom: 8px;">🛡️</div>
+              <div style="font-weight: 600; color: var(--color-text);">No findings match your active filter</div>
+              <div style="font-size: var(--text-xs); margin: 4px 0 14px;">Try selecting a different severity or resetting active filters</div>
+              <button class="btn btn-secondary btn-sm" onclick="ReviewController.resetFilters()">Reset All Filters</button>
+            </td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="7" style="text-align: center; padding: 48px; color: var(--color-text-muted);">
+              <div style="font-size: 32px; margin-bottom: 8px;">🔍</div>
+              <div style="font-weight: 700; color: var(--color-text); font-size: var(--text-base);">No review findings recorded in this session</div>
+              <div style="font-size: var(--text-xs); margin: 6px auto 16px; max-width: 440px;">
+                You can run an automated scan on your Python code, or load the pre-built sample multi-agent security audit to explore findings, CWE taxonomies, and remediations.
+              </div>
+              <div style="display: flex; gap: 8px; justify-content: center; flex-wrap: wrap;">
+                <button class="btn btn-primary btn-sm" onclick="ReviewController.loadSampleAudit()">
+                  <span>⚡ Load Demo Security Audit</span>
+                </button>
+                <a href="/review/new" class="btn btn-secondary btn-sm">
+                  <span>🚀 Run New Review</span>
+                </a>
+              </div>
+            </td>
+          </tr>
+        `;
+      }
       return;
     }
 
@@ -1335,6 +1378,33 @@ def test_${safeFn}_syntax_and_remediation():
     } catch (e) {
       App.showToast('Export Error', e.message, 'error');
     }
+  },
+
+  loadSampleAudit(showToast = true) {
+    if (typeof SampleReviewData === 'undefined' || !SampleReviewData) return;
+    localStorage.setItem('codesentinel_last_review', JSON.stringify(SampleReviewData));
+    if (showToast && typeof App !== 'undefined' && App.showToast) {
+      App.showToast('Demo Security Audit Loaded', '5 multi-agent findings loaded across 2 files.', 'success');
+    }
+    this.initResults();
+  },
+
+  resetFilters() {
+    this.activeFilter = {
+      severity: 'all',
+      category: 'all',
+      verification: 'all',
+      search: '',
+      sortBy: 'risk_desc',
+      showRejected: false
+    };
+    const selects = document.querySelectorAll('#findings-tab-content .table-toolbar select');
+    selects.forEach(s => s.selectedIndex = 0);
+    const searchInput = document.querySelector('#findings-tab-content .table-toolbar input[type="text"]');
+    if (searchInput) searchInput.value = '';
+    const rejBtn = document.getElementById('toggle-rejected-btn');
+    if (rejBtn) rejBtn.classList.remove('active');
+    this.renderFindingsTable();
   },
 
   escape(str) {

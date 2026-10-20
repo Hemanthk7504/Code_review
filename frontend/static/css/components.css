@@ -1915,6 +1915,10 @@
 /* ==========================================================================
    Global Slide-Over Process Guide Drawer
    ========================================================================== */
+#process-guide-backdrop {
+  z-index: 1040;
+}
+
 .guide-drawer {
   position: fixed;
   top: 0;

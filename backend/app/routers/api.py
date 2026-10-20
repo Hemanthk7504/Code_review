@@ -175,6 +175,37 @@ async def get_review_history():
         return []
 
 
+@router.get("/reviews/latest")
+async def get_latest_review():
+    """Retrieve the latest completed review and findings from SQLite database."""
+    try:
+        from ..db.session import SessionLocal
+        from ..models.review import ReviewRecordModel
+        with SessionLocal() as db:
+            rec = db.query(ReviewRecordModel).order_by(ReviewRecordModel.created_at.desc()).first()
+            if not rec:
+                return None
+            findings = []
+            if rec.findings_json:
+                try:
+                    findings = json.loads(rec.findings_json)
+                except Exception:
+                    findings = []
+            return {
+                "id": rec.id,
+                "target_path": rec.target_path,
+                "files_analyzed": rec.files_analyzed,
+                "total_findings": rec.total_findings,
+                "verified_findings": rec.verified_findings,
+                "overall_risk": rec.overall_risk,
+                "posture_grade": rec.posture_grade,
+                "created_at": rec.created_at,
+                "findings": findings
+            }
+    except Exception:
+        return None
+
+
 @router.get("/audit-logs")
 async def get_audit_logs():
     """Retrieve persisted audit events from SQLite database."""
