@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Settings · CodeSentinel{% endblock %}
 {% block breadcrumb %}Settings{% endblock %}
@@ -11,6 +12,37 @@
       Manage LLM cognitive models, verification gates, and GitHub webhook secrets.
     </p>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'settings',
+    'Platform Settings & Multi-Agent Engine Tuning',
+    'Configuration of LLM cognitive providers, static tool toggles, reflexion loop iteration limits, and webhook credentials',
+    [
+      {'num': '01', 'title': 'Provider Handshake', 'desc': 'Validates connectivity and token quotas with upstream LLM APIs (NVIDIA Nemotron, OpenAI, Anthropic, or local Ollama).'},
+      {'num': '02', 'title': 'Toolchain Enabling', 'desc': 'Toggles deterministic static scanners (Bandit SAST, Pylint AST, Radon metrics, Shannon Entropy scanner).'},
+      {'num': '03', 'title': 'Reflexion Tuning', 'desc': 'Configures maximum reflexion retry iterations (1-5) and AST validation timeout ceilings.'},
+      {'num': '04', 'title': 'GitHub Secret Management', 'desc': 'Configures webhook HMAC secrets and default Personal Access Tokens for automated fix PR dispatch.'}
+    ],
+    [
+      'Environment variable backed configuration (.env file) with runtime hot-reloading for non-critical parameters.',
+      'Encrypted storage for GitHub Personal Access Tokens and webhook verification secrets.',
+      'Configurable reflexion loop parameters: max_revisions (default 3), temperature (0.1 for high determinism), fallback model cascading.',
+      'Individual static analysis tools (Bandit, Pylint, Radon, Entropy) can be toggled on/off to tune scan execution speed.'
+    ],
+    [
+      'Inspect active LLM cognitive endpoints and models in the LLM Multi-Agent Provider section.',
+      'Adjust Static Tooling toggles to enable or disable individual analysis modules.',
+      'Set Reflexion Loop retry limits to balance latency versus code revision thoroughness.',
+      'Manage GitHub App and Webhook credentials to enable seamless bidirectional Git automation.'
+    ],
+    [
+      {'term': 'Reflexion Limit', 'def': 'The maximum number of self-correction retry cycles permitted per candidate patch.'},
+      {'term': 'Deterministic Scanner', 'def': 'Static analysis tool whose results are 100% reproducible given the same source code.'},
+      {'term': 'Hot Reloading', 'def': 'Updating platform operational parameters without restarting the application process.'},
+      {'term': 'Secret Sanitization', 'def': 'Automatically redacting sensitive tokens and passwords before logging or rendering in UI.'}
+    ]
+  ) }}
 
   <!-- LLM & Cognitive Multi-Agent Config -->
   <div class="card" style="margin-bottom: var(--space-xl);">

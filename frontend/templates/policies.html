@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Quality Gates · CodeSentinel{% endblock %}
 {% block breadcrumb %}Quality Gates{% endblock %}
@@ -22,6 +23,37 @@
       </button>
     </div>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'policies',
+    'Quality Gate Governance & Zero-Trust Enforcement',
+    'Deterministic rule engine blocking pull request merges based on severity limits, posture grades, and secret detections',
+    [
+      {'num': '01', 'title': 'Telemetry Rule Feed', 'desc': 'Pulls findings, CVSS composite risk score, and secret leak flags from completed code reviews.'},
+      {'num': '02', 'title': 'Threshold Assertion', 'desc': 'Compares metrics against configured limits (Max Critical Flaws, Min Posture Grade, Max Allowed Risk).'},
+      {'num': '03', 'title': 'Hard Merge Blocker', 'desc': 'Rejects PR merge if any zero-tolerance condition triggers (e.g. detected raw plaintext secrets or CWE-89 injection).'},
+      {'num': '04', 'title': 'GitHub Status Check', 'desc': 'Dispatches commit status context (code-sentinel/quality-gate) with PASS / FAIL state back to Git provider.'}
+    ],
+    [
+      'Atomic JSON-backed rule evaluation against the review finding vector.',
+      'Zero-tolerance hard stops immediately trigger when secrets (entropy score > 4.5) or CWE critical vulnerabilities are corroborated.',
+      'Emits GitHub Commit Status API check (state: failure, description: "Quality Gate Failed") to block branch merging.',
+      'Live simulation mode allows evaluating historical reviews without altering production enforcement policies.'
+    ],
+    [
+      'Configure maximum allowed Critical, High, and Medium findings.',
+      'Toggle "Zero-Tolerance for Secrets" to guarantee hard blockers whenever keys or tokens are detected.',
+      'Click "Save Active Policy" to persist governance rules into system storage.',
+      'Click "Evaluate Last Review" to test how your active policy evaluates against the most recent scan telemetry.'
+    ],
+    [
+      {'term': 'Quality Gate', 'def': 'A programmatic validation gate that code must pass before merging to protected branches.'},
+      {'term': 'Zero-Tolerance Rule', 'def': 'An immutable security threshold where a single violation triggers an immediate, un-overridable block.'},
+      {'term': 'Posture Threshold', 'def': 'The minimum letter grade (A+, A, B, etc.) required to satisfy organization deployment criteria.'},
+      {'term': 'Commit Status', 'def': 'The GitHub/GitLab build check API status attached to a commit hash.'}
+    ]
+  ) }}
 
   <div class="responsive-grid-3" style="grid-template-columns: 1fr 1fr; gap: var(--space-xl);">
     <!-- Policy Rules Configuration Card -->

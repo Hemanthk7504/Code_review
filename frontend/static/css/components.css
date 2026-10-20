@@ -1721,3 +1721,266 @@
   color: #fff;
   border-color: var(--color-primary);
 }
+
+/* ==========================================================================
+   Page Explainer & Architecture Process Guide Component
+   ========================================================================== */
+.page-explainer-card {
+  background: linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-sunken) 100%);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--color-primary);
+  border-radius: var(--radius-lg);
+  margin-bottom: var(--space-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--duration-normal) var(--ease-smooth);
+}
+
+.page-explainer-header {
+  padding: 12px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  user-select: none;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.page-explainer-header:hover {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.page-explainer-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.page-explainer-title h3 {
+  margin: 0;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.page-explainer-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: rgba(99, 102, 241, 0.1);
+  border: 1px solid rgba(99, 102, 241, 0.25);
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.page-explainer-toggle-btn:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.page-explainer-body {
+  padding: 18px 20px 20px;
+  border-top: 1px solid var(--color-border-subtle);
+  animation: fadeIn 200ms ease;
+}
+
+.process-flow-track {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.process-flow-step {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 12px 14px;
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.process-flow-step-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 800;
+  color: var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.process-flow-step-num::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--color-border-subtle);
+}
+
+.process-flow-step-title {
+  font-size: var(--text-xs);
+  font-weight: 700;
+  color: var(--color-text);
+}
+
+.process-flow-step-desc {
+  font-size: 11px;
+  color: var(--color-text-secondary);
+  line-height: 1.45;
+}
+
+.explainer-meta-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+@media (max-width: 768px) {
+  .explainer-meta-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.explainer-subheading {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.explainer-bullet-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.explainer-bullet-list li {
+  font-size: 11.5px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.explainer-bullet-list li::before {
+  content: '▸';
+  color: var(--color-primary);
+  font-weight: bold;
+}
+
+.explainer-glossary-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.glossary-pill {
+  font-size: 10.5px;
+  padding: 3px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.glossary-pill strong {
+  color: var(--color-primary);
+}
+
+/* ==========================================================================
+   Global Slide-Over Process Guide Drawer
+   ========================================================================== */
+.guide-drawer {
+  position: fixed;
+  top: 0;
+  right: -560px;
+  width: 540px;
+  max-width: 92vw;
+  height: 100vh;
+  background: var(--color-surface-elevated);
+  border-left: 1px solid var(--color-border-strong);
+  box-shadow: -10px 0 30px rgba(0, 0, 0, 0.4);
+  z-index: 1050;
+  display: flex;
+  flex-direction: column;
+  transition: right 300ms var(--ease-spring);
+}
+
+.guide-drawer.open {
+  right: 0;
+}
+
+.guide-drawer-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--color-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--color-surface);
+}
+
+.guide-drawer-nav {
+  display: flex;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--color-surface-sunken);
+  border-bottom: 1px solid var(--color-border);
+  overflow-x: auto;
+  white-space: nowrap;
+}
+
+.guide-drawer-nav-btn {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: var(--radius-full);
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  transition: all var(--duration-fast) ease;
+}
+
+.guide-drawer-nav-btn:hover {
+  color: var(--color-text);
+  background: var(--color-surface);
+}
+
+.guide-drawer-nav-btn.active {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+
+.guide-drawer-body {
+  padding: 20px;
+  overflow-y: auto;
+  flex: 1;
+  font-size: var(--text-xs);
+  line-height: 1.6;
+}

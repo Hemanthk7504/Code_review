@@ -51,7 +51,7 @@
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
-<body>
+<body data-active-page="{{ active_page }}">
   <div class="app-shell">
     {% if active_page not in ['home', 'login'] %}
     <!-- Sidebar Navigation (Console Views Only) -->
@@ -209,6 +209,12 @@
             <kbd>⌘K</kbd>
           </button>
 
+          <!-- Process Guide Trigger -->
+          <button class="btn btn-secondary btn-sm" onclick="App.toggleProcessGuide()" title="Process Guide (Architecture & Operations) [⌘/]" style="display: flex; align-items: center; gap: 6px; font-weight: 600; padding: 5px 11px;">
+            <span style="font-size: 13px;">💡</span>
+            <span>Process Guide</span>
+          </button>
+
           <!-- Live Connection Status Pill -->
           <div class="connection-pill" id="topbar-connection-pill">
             <span class="dot-indicator dot-success live-pulse"></span>
@@ -250,7 +256,26 @@
       </div>
       <div class="cmd-results" id="cmd-palette-results"></div>
     </div>
-  </div>
+  <!-- Global Slide-Over Process & Architecture Guide Drawer -->
+  <div class="drawer-backdrop" id="process-guide-backdrop" onclick="App.closeProcessGuide()"></div>
+  <aside class="guide-drawer" id="process-guide-drawer" aria-label="Process & Architecture Guide">
+    <div class="guide-drawer-header">
+      <div style="display: flex; align-items: center; gap: 10px;">
+        <span style="font-size: 22px;">💡</span>
+        <div>
+          <h3 style="font-size: var(--text-sm); font-weight: 800; margin: 0; color: var(--color-text);">Process & Architecture Guide</h3>
+          <small style="color: var(--color-text-muted); font-size: 11px;">Under-the-hood algorithms, pipelines & workflows</small>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm btn-icon-only" onclick="App.closeProcessGuide()" title="Close Guide [ESC]">✕</button>
+    </div>
+
+    <!-- Page Selection Tabs in Drawer -->
+    <div class="guide-drawer-nav" id="guide-drawer-nav"></div>
+
+    <!-- Active Page Explainer Content -->
+    <div class="guide-drawer-body" id="guide-drawer-body"></div>
+  </aside>
 
   <!-- Core JavaScript Modules -->
   <script src="/static/js/api.js?v=2.2.0"></script>

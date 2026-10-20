@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}New Code Review · CodeSentinel{% endblock %}
 {% block breadcrumb %}New Review{% endblock %}
@@ -23,6 +24,34 @@
       </select>
     </div>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'new_review',
+    'Cognitive Review & Reflexion Auto-Repair Pipeline',
+    'Real-time execution journey from static SAST and multi-agent AI to deterministic AST code remediation',
+    [
+      {'num': '01', 'title': 'Multi-Engine Static SAST', 'desc': 'Bandit SAST, Pylint AST, Radon Complexity, and Shannon Entropy secret scanners execute in parallel.'},
+      {'num': '02', 'title': 'AI Specialist Consensus', 'desc': 'Security, Logic Bug, Quality, Performance, and Architecture specialists evaluate code semantics.'},
+      {'num': '03', 'title': 'Corroboration & Verification', 'desc': 'Cross-engine evidence merges, CVSS scores are computed, and skeptical verification audits claims.'},
+      {'num': '04', 'title': 'Reflexion Auto-Repair', 'desc': 'Synthesizes verified AST fixes, passes syntax compile gates, and ensures zero new regressions.'}
+    ],
+    [
+      'Real-time SSE event streaming (/api/v1/review/stream) pushes timestamped logs and stage transitions directly to the live terminal.',
+      'Deterministic AST transform engine rewrites bare exceptions, replaces eval with literal_eval, and adds missing HTTP timeouts even in offline mode.',
+      'Reflexion self-healing loop retries repairs up to 3 times if syntax validation detects compilation issues.'
+    ],
+    [
+      'Select an example preset (e.g. "Arbitrary Eval & Bare Except") or drag and drop your own Python files.',
+      'Click "Review Only" to run read-only static + AI analysis and inspect findings.',
+      'Click "Review and Auto-Revise (Full Loop)" to synthesize verified fixes and download safe code.'
+    ],
+    [
+      {'term': 'Full Loop', 'desc': 'The complete cycle: Review -> Corroborate -> Synthesize Fix -> Re-validate -> Unit Test.'},
+      {'term': 'SSE Streaming', 'desc': 'Server-Sent Events streaming live execution telemetry from the backend engine.'},
+      {'term': 'AST Transform', 'desc': 'Abstract Syntax Tree node rewrite that safely fixes bugs without altering unrelated logic.'}
+    ]
+  ) }}
 
   <!-- Drag and drop zone -->
   <div class="dropzone" id="file-dropzone" onclick="document.getElementById('hidden-file-input').click()" style="margin-bottom: var(--space-lg);">

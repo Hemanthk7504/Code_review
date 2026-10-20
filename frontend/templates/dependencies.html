@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Dependencies & SBOM · CodeSentinel{% endblock %}
 {% block breadcrumb %}Dependencies & SBOM{% endblock %}
@@ -22,6 +23,37 @@
       </button>
     </div>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'dependencies',
+    'Software Composition Analysis & CycloneDX Engine',
+    'Dependency manifest parsing, NVD CVE database correlation, supply-chain vulnerability ranking, and SBOM generation',
+    [
+      {'num': '01', 'title': 'Manifest Parsing', 'desc': 'Tokenizes requirements.txt, pyproject.toml, or package locks into normalized package names and pinned version specifiers.'},
+      {'num': '02', 'title': 'NVD & Advisory Cross-Ref', 'desc': 'Queries National Vulnerability Database (NVD) and GitHub Advisory DB for known CVEs, CVSS 3.1 base vectors, and remediation advisories.'},
+      {'num': '03', 'title': 'Supply Chain Risk Scoring', 'desc': 'Calculates transitive exposure, flags unpinned dependencies, and evaluates license compliance risks (GPL, Apache 2.0, MIT).'},
+      {'num': '04', 'title': 'CycloneDX v1.5 SBOM Export', 'desc': 'Emits an enterprise-grade Software Bill of Materials in compliant CycloneDX JSON specification.'}
+    ],
+    [
+      'Supports pip requirements.txt format, pyproject.toml, and Pipfile manifests with PEP 440 version specifier evaluation.',
+      'Vulnerability lookup against local CVE cache and upstream security advisories.',
+      'License compliance scanner alerts on copyleft contagion or restricted commercial use licenses.',
+      'CycloneDX JSON schema includes cryptographically verifiable component hashes and direct PURL (Package URL) identifiers.'
+    ],
+    [
+      'Paste or edit the requirements file in the Package Manifest editor.',
+      'Click "Scan Manifest Now" to execute SCA vulnerability analysis.',
+      'Review discovered CVE vulnerabilities, affected components, and recommended fix versions in the Advisory panel.',
+      'Click "Download CycloneDX SBOM" to export a compliance-ready SBOM JSON document for regulatory reporting.'
+    ],
+    [
+      {'term': 'CVE', 'def': 'Common Vulnerabilities and Exposures identifier designating a publicly known cybersecurity vulnerability.'},
+      {'term': 'SBOM', 'def': 'Software Bill of Materials detailing all nested third-party libraries, binaries, and licensing metadata.'},
+      {'term': 'CycloneDX', 'def': 'OWASP flagship lightweight SBOM standard designed for application security and supply chain analysis.'},
+      {'term': 'Transitive Dependency', 'def': 'An indirect library dependency required by an explicitly installed top-level package.'}
+    ]
+  ) }}
 
   <!-- Main Grid -->
   <div class="responsive-grid-3" style="grid-template-columns: 1fr 1.2fr; gap: var(--space-xl);">

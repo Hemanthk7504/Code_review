@@ -1,10 +1,39 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Review Results · CodeSentinel{% endblock %}
 {% block breadcrumb %}Review Results{% endblock %}
 
 {% block content %}
 <div class="animate-fade-in">
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'results',
+    'Audit Results & Verification Breakdown',
+    'Multi-source evidence triangulation, MITRE CWE taxonomy mapping, and false positive refutation analysis',
+    [
+      {'num': '01', 'title': 'Finding Triangulation', 'desc': 'Corroborates findings across Bandit, Pylint AST, Radon, and 5 AI specialists.'},
+      {'num': '02', 'title': 'Skeptical Verification', 'desc': 'Audits each claim against AST code context to confirm or refute hallucinations.'},
+      {'num': '03', 'title': 'CVSS & CWE Scoring', 'desc': 'Calculates overall risk (0-100), assigns posture grade, and tags CWE numbers.'},
+      {'num': '04', 'title': 'Remediation Export', 'desc': 'Offers verified source code, side-by-side diffs, and OASIS SARIF v2.1.0 exports.'}
+    ],
+    [
+      'Corroborating Sources shows which specific engines agreed on each defect (e.g. Bandit + AST + Security Agent).',
+      'Refuted False Positives tab keeps full auditability on claims discarded by the verification gate.',
+      'One-click SARIF v2.1.0 export produces compliant JSON for GitHub Advanced Security Code Scanning.'
+    ],
+    [
+      'Use the filter dropdowns to isolate Critical or High security issues.',
+      'Click "⚡ View Remediated Code" to preview, copy, or download the fully patched Python file.',
+      'Switch to the "🔍 Pipeline Execution Audit Trail" tab to verify all static tools and validation gates.'
+    ],
+    [
+      {'term': 'Corroboration', 'desc': 'Multi-tool consensus eliminating single-scanner blind spots.'},
+      {'term': 'CWE Taxonomy', 'desc': 'MITRE Common Weakness Enumeration standard taxonomy for software flaws.'},
+      {'term': 'SARIF 2.1.0', 'desc': 'OASIS standard interchange format for static analysis security results.'}
+    ]
+  ) }}
+
   <!-- Results Executive Header Card -->
   <div class="card" style="margin-bottom: var(--space-xl);">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-xl);">

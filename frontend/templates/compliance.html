@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Regulatory Compliance · CodeSentinel{% endblock %}
 {% block breadcrumb %}Compliance Scorecards{% endblock %}
@@ -22,6 +23,37 @@
       </button>
     </div>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'compliance',
+    'Regulatory Compliance & Framework Audit Matrix',
+    'Automated mapping of scan telemetry to OWASP Top 10, SOC 2 Type II, PCI-DSS v4.0, and ISO 27001 control requirements',
+    [
+      {'num': '01', 'title': 'CWE Taxonomy Ingestion', 'desc': 'Ingests all verified code flaws and links them via MITRE CWE cross-walk mappings.'},
+      {'num': '02', 'title': 'Framework Control Correlation', 'desc': 'Maps CWE IDs to normative compliance clauses (e.g. CWE-89 -> OWASP A03 Injection, SOC 2 CC6.6, PCI-DSS 6.2.4).'},
+      {'num': '03', 'title': 'Compliance Gap Scoring', 'desc': 'Computes per-control compliance percentages, defect density per standard, and passing criteria status.'},
+      {'num': '04', 'title': 'Audit Attestation Export', 'desc': 'Generates signed, tamper-evident JSON compliance attestations and printable audit certificates.'}
+    ],
+    [
+      'MITRE CWE to framework crosswalk engine covering OWASP Top 10 (2021), SOC 2 Type II, PCI-DSS v4.0, and ISO 27001.',
+      'Evaluates code posture against controls: Access Control (OWASP A01), Cryptographic Failures (A02), Injection (A03), Insecure Design (A04), Security Misconfiguration (A05), Vulnerable Dependencies (A06).',
+      'Renders real-time control status: Compliant (0 violations), Warning (medium/low findings), or Non-Compliant (blocking flaws).',
+      'Exports cryptographic timestamped audit evidence compatible with external auditor review portals.'
+    ],
+    [
+      'Use the framework tabs (OWASP Top 10, SOC 2, PCI-DSS, ISO 27001) to switch regulatory views.',
+      'Inspect the control matrix to view passing vs failing technical requirements.',
+      'Click "Export Audit JSON" to download structured evidence for external auditors.',
+      'Click "Print Certificate" to produce a clean executive compliance attestation document.'
+    ],
+    [
+      {'term': 'OWASP Top 10', 'def': 'Standard awareness document representing the most critical security risks to web applications.'},
+      {'term': 'SOC 2 Type II', 'def': 'Trust Services Criteria evaluating security, availability, and confidentiality controls over time.'},
+      {'term': 'PCI-DSS v4.0', 'def': 'Payment Card Industry Data Security Standard for organizations handling cardholder data.'},
+      {'term': 'Cross-Walk Mapping', 'def': 'A bi-directional relational lookup connecting specific code weaknesses (CWE) to standard regulatory clauses.'}
+    ]
+  ) }}
 
   <!-- Framework Switcher Tabs -->
   <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-xl); flex-wrap: wrap; gap: var(--space-md);">

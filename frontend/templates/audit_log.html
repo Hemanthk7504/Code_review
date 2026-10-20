@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Audit Log (Preview) · CodeSentinel{% endblock %}
 {% block breadcrumb %}Audit Log{% endblock %}
@@ -21,6 +22,36 @@
       <span>Export Log Stream</span>
     </button>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'audit_log',
+    'Immutable Security Audit Ledger & Forensic Trail',
+    'Cryptographically sequenced event logging capturing every review execution, policy override, and key rotation',
+    [
+      {'num': '01', 'title': 'Event Interception', 'desc': 'Middleware hooks intercept all API calls, review requests, policy saves, and user authentication events.'},
+      {'num': '02', 'title': 'Metadata Enrichment', 'desc': 'Extracts client IP address, authenticated user/token identity, HTTP method, and target resource ID.'},
+      {'num': '03', 'title': 'Immutable Ledger Persistence', 'desc': 'Writes append-only event records into SQLite storage with ISO-8601 millisecond timestamps.'},
+      {'num': '04', 'title': 'Forensic Search & Export', 'desc': 'Provides filtered querying and structured JSON stream export for SOC 2 Type II compliance reviews.'}
+    ],
+    [
+      'Append-only transactional architecture prevents log tampering, modification, or out-of-order deletion.',
+      'Captures actions across all subsystems: review creation, policy threshold updates, webhook invocations, API token generations.',
+      'Sanitizes request payloads to ensure leaked developer secrets are never re-exposed in plain text within audit logs.',
+      'Stores client IP origin, User-Agent, and verified JWT Subject identity for non-repudiation.'
+    ],
+    [
+      'Inspect the log table to audit who initiated scans or altered gate rules.',
+      'Review IP origin addresses and Actor identities to detect anomalous or unauthorized access.',
+      'Click "Export Log Stream" to download the complete audit trail in JSON format for SIEM ingestion (Splunk, Datadog).'
+    ],
+    [
+      {'term': 'Immutable Ledger', 'def': 'An append-only data store where entries can never be modified or deleted after creation.'},
+      {'term': 'Non-Repudiation', 'def': 'Assurance that an actor cannot deny having performed an action.'},
+      {'term': 'SIEM', 'def': 'Security Information and Event Management platform aggregating enterprise log streams.'},
+      {'term': 'Forensic Trail', 'def': 'The chronological sequence of digital evidence documenting system access and operations.'}
+    ]
+  ) }}
 
   <div class="card">
     <div class="table-responsive">

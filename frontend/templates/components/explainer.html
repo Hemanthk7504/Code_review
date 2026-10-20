@@ -1,0 +1,68 @@
+{% macro page_explainer(page_id, title, subtitle, steps, under_the_hood, how_to_use, glossary) %}
+<div class="page-explainer-card" id="explainer-{{ page_id }}">
+  <div class="page-explainer-header" onclick="App.togglePageExplainer('{{ page_id }}')">
+    <div class="page-explainer-title">
+      <span style="font-size: 18px;">💡</span>
+      <div>
+        <h3>{{ title }}</h3>
+        <small style="color: var(--color-text-secondary); font-size: 11px;">{{ subtitle }}</small>
+      </div>
+    </div>
+    <button type="button" class="page-explainer-toggle-btn" id="explainer-btn-{{ page_id }}">
+      <span class="explainer-btn-icon" id="explainer-icon-{{ page_id }}">▾</span>
+      <span class="explainer-btn-text" id="explainer-text-{{ page_id }}">Hide Guide</span>
+    </button>
+  </div>
+  <div class="page-explainer-body" id="explainer-body-{{ page_id }}">
+    <!-- 4-Step Process Flow -->
+    <div class="process-flow-track">
+      {% for s in steps %}
+      <div class="process-flow-step">
+        <div class="process-flow-step-num">Step {{ s.num }}</div>
+        <div class="process-flow-step-title">{{ s.title }}</div>
+        <div class="process-flow-step-desc">{{ s.desc }}</div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Technical Meta Grid -->
+    <div class="explainer-meta-grid">
+      <div>
+        <div class="explainer-subheading">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+          <span>Under The Hood: Engines & Heuristics</span>
+        </div>
+        <ul class="explainer-bullet-list">
+          {% for item in under_the_hood %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+
+      <div>
+        <div class="explainer-subheading">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+          <span>Key Concepts & Terminology</span>
+        </div>
+        <div class="explainer-glossary-pills" style="margin-bottom: 14px;">
+          {% for g in glossary %}
+          <div class="glossary-pill" title="{{ g.desc }}">
+            <strong>{{ g.term }}:</strong> <span>{{ g.desc }}</span>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="explainer-subheading">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+          <span>Quick Workflow Guide</span>
+        </div>
+        <ul class="explainer-bullet-list">
+          {% for step in how_to_use %}
+          <li>{{ step }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+{% endmacro %}

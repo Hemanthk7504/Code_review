@@ -1,10 +1,38 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Automated Revisions & Diffs · CodeSentinel{% endblock %}
 {% block breadcrumb %}Revisions & Diffs{% endblock %}
 
 {% block content %}
 <div class="animate-fade-in" style="max-width: 1300px; margin: 0 auto;">
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'revisions',
+    'Automated Code Revision & Differential Analysis Process',
+    'AST-backed code synthesis, syntax verification gates, regression guarantees, and unit test generation',
+    [
+      {'num': '01', 'title': 'Differential Generation', 'desc': 'Computes character- and line-level diffs between original and remediated Python code.'},
+      {'num': '02', 'title': 'AST Parse Gate', 'desc': 'Ensures the revised source code parses cleanly under ast.parse() without syntax errors.'},
+      {'num': '03', 'title': 'Regression Safety Gate', 'desc': 'Re-runs static analysis on revised source to ensure zero new security or bug defects.'},
+      {'num': '04', 'title': 'Unit Test Synthesis', 'desc': 'Generates pytest companion test code verifying that the repaired defect will not regress.'}
+    ],
+    [
+      'Validation metrics compare targeted findings against resolved findings (resolution_ratio >= 1.0).',
+      'Multi-file tab switcher preserves revision state across all uploaded files in the session.',
+      'Export patch download formats standard git diffs compatible with git apply command.'
+    ],
+    [
+      'Toggle between "Side-by-Side" and "Unified" view to inspect line-level edits.',
+      'Check the Validation Gate badge: confirms valid AST compilation and risk reduction delta.',
+      'Click "Copy Revised Code" or "Download Patch" to integrate the fixes into your repository.'
+    ],
+    [
+      {'term': 'Risk Delta', 'desc': 'The mathematical reduction in risk score between original and remediated code.'},
+      {'term': 'Regression Gate', 'desc': 'Validation step ensuring a security patch did not introduce secondary defects.'},
+      {'term': 'Companion Test', 'desc': 'Synthesized unit test asserting the bug fix behaves properly under test.'}
+    ]
+  ) }}
 
   <!-- Informative Empty State / Offline LLM Notice Banner -->
   <div id="revisions-empty-state" class="card" style="display: none; padding: 48px 32px; text-align: center; margin-bottom: var(--space-xl);">

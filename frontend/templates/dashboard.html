@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Dashboard · CodeSentinel{% endblock %}
 {% block breadcrumb %}Dashboard{% endblock %}
@@ -22,6 +23,34 @@
       </a>
     </div>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'dashboard',
+    'Security Posture & System Health Process',
+    'Continuous aggregation of review telemetry, CVSS 3.1 risk computation, and CWE taxonomy classification',
+    [
+      {'num': '01', 'title': 'Telemetry Sync', 'desc': 'Aggregates scan events from SQLite database and background GitHub Action workers.'},
+      {'num': '02', 'title': 'CVSS Risk Scoring', 'desc': 'Computes continuous composite risk scores (0-100) using weighted defect severity distributions.'},
+      {'num': '03', 'title': 'Posture Grading', 'desc': 'Maps mathematical risk values into enterprise grades from A+ (0-15 risk) down to F (75+ risk).'},
+      {'num': '04', 'title': 'Taxonomy Attribution', 'desc': 'Groups corroborated findings under MITRE CWE categories (CWE-89, CWE-798, CWE-94, etc.).'}
+    ],
+    [
+      'Continuous composite risk formula: Critical (35pts), High (20pts), Medium (10pts), Low (2pts) with non-linear saturation.',
+      'Skeptical self-verification monitors track refuted false alarm rates to measure multi-agent LLM precision.',
+      'Real-time synchronization with background GitHub Action webhooks and pull request fix branches.'
+    ],
+    [
+      'Monitor the Risk Score Gauge & Posture Grade badge to evaluate production merge safety.',
+      'Click on any item in "Top Security Risks" to jump directly into line-level code findings.',
+      'Click "+ Review Code" or "Review GitHub PR" to initiate a new automated audit cycle.'
+    ],
+    [
+      {'term': 'CVSS 3.1', 'desc': 'Common Vulnerability Scoring System standard for security defect severity.'},
+      {'term': 'Posture Grade', 'desc': 'Enterprise health rating from A+ (excellent) to F (critical vulnerability risk).'},
+      {'term': 'Refuted', 'desc': 'Hallucinated or unverified findings filtered out by the self-verification auditor.'}
+    ]
+  ) }}
 
   <!-- Animated KPI Cards -->
   <div class="stats-grid">

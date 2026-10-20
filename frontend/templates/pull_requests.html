@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}GitHub Pull Requests · CodeSentinel{% endblock %}
 {% block breadcrumb %}Pull Requests{% endblock %}
@@ -11,6 +12,37 @@
       Trigger autonomous reviews on GitHub pull requests and dispatch automated fix branches.
     </p>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'pull_requests',
+    'GitHub PR Ingestion & Automated Remediation Flow',
+    'Bidirectional GitHub API synchronization, unified diff extraction, policy evaluation, and automated fix PR dispatch',
+    [
+      {'num': '01', 'title': 'PR Ingestion & Diff Extraction', 'desc': 'GitHub API v3 fetches modified files, unified git patch hunks, author, and base/head branch metadata.'},
+      {'num': '02', 'title': 'Specialist Consensus Scan', 'desc': 'Security, bug detection, performance, and complexity agents analyze modified line spans in parallel.'},
+      {'num': '03', 'title': 'Inline PR Review Comments', 'desc': 'Posts corroborated line-level review annotations, CWE taxonomy badges, and remediation advice directly on GitHub.'},
+      {'num': '04', 'title': 'Automated Fix Branch Dispatch', 'desc': 'Generates unified diffs for verified flaws, creates a fix branch (e.g., sentinel/fix-pr-142), and opens a pull request.'}
+    ],
+    [
+      'Direct REST integration with GitHub /repos/{owner}/{repo}/pulls/{number} endpoint.',
+      'Parses GitHub unified diff hunks into AST-mapped line coordinates for precise line-level inline comments.',
+      'Creates automated fix branches using Git tree and ref APIs, committing validated AST patches without touching human commits.',
+      'Supports automated review approval, request changes, and comment-only status submissions based on Enterprise Policy rules.'
+    ],
+    [
+      'Enter the target repository in "owner/repo" format and specify the Pull Request number.',
+      'Supply a Personal Access Token (PAT) with repo and pull_requests write scopes if creating automated fix PRs.',
+      'Click "Trigger Full PR Review & Dispatch Fix PR" to launch real-time scanning with live progress visualization.',
+      'Inspect the generated review findings or follow the generated GitHub PR link to merge the verified fix branch.'
+    ],
+    [
+      {'term': 'Unified Diff Hunk', 'def': 'Standard Git patch format showing line deletions and additions with surrounding contextual code.'},
+      {'term': 'Automated Fix PR', 'def': 'A newly generated pull request opened by CodeSentinel targeting the original branch with verified fixes.'},
+      {'term': 'Review Check Status', 'def': 'GitHub Commit Status check (pending, success, failure) signaling whether quality gates passed.'},
+      {'term': 'Inline Review Comment', 'def': 'Direct line-level GitHub code review thread attached precisely to the offending hunk line.'}
+    ]
+  ) }}
 
   <!-- PR Submission Form Card -->
   <div class="card" style="margin-bottom: var(--space-xl);">

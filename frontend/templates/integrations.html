@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Integrations Hub · CodeSentinel{% endblock %}
 {% block breadcrumb %}Integrations{% endblock %}
@@ -22,6 +23,37 @@
       </button>
     </div>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'integrations',
+    'Integrations & ChatOps Event Dispatch Engine',
+    'Real-time webhook notifications, Prometheus OpenMetrics export, dynamic SVG status badges, and Jira issue sync',
+    [
+      {'num': '01', 'title': 'Event Publication', 'desc': 'Captures review events (review_completed, gate_failed, fix_pr_opened) from the core engine.'},
+      {'num': '02', 'title': 'Webhook Dispatch', 'desc': 'Formats JSON payloads with HMAC-SHA256 signatures and posts to Slack, Discord, Microsoft Teams, or custom endpoints.'},
+      {'num': '03', 'title': 'Prometheus Metric Scraping', 'desc': 'Exposes continuous telemetry at /metrics for enterprise Prometheus/Grafana scrape jobs.'},
+      {'num': '04', 'title': 'Dynamic SVG Badge Generation', 'desc': 'Serves live, cache-controlled badges displaying real-time security posture grades directly in READMEs.'}
+    ],
+    [
+      'Webhook dispatcher with exponential backoff retry and HMAC authentication headers.',
+      'Native Prometheus OpenMetrics endpoint exposing counters: codesentinel_reviews_total, codesentinel_flaws_discovered, codesentinel_risk_gauge.',
+      'Dynamic SVG badge engine generating shields.io-compatible vector status badges without external CDN dependencies.',
+      'Jira / GitHub Issue synchronization generating automated bug tickets with verified reproductions and CWE tags.'
+    ],
+    [
+      'Click "Add Integration" to register new Slack, Teams, or generic webhook endpoints.',
+      'Test webhook dispatch by sending a simulated payload to verify network reachability.',
+      'Copy the CI/CD Quality Badge Markdown link to embed real-time posture indicators into your repository README.',
+      'Click "Prometheus Metrics" to view the live OpenMetrics endpoint configuration and scrape sample.'
+    ],
+    [
+      {'term': 'Webhook', 'def': 'An HTTP POST notification sent automatically when an event occurs in the application.'},
+      {'term': 'OpenMetrics', 'def': 'Cloud Native Computing Foundation standard for exposing application telemetry to Prometheus.'},
+      {'term': 'HMAC Signature', 'def': 'Hash-based Message Authentication Code verifying that webhook payloads originate authentically from CodeSentinel.'},
+      {'term': 'Shield Badge', 'def': 'A status badge rendered in SVG format conveying build or security health.'}
+    ]
+  ) }}
 
   <!-- Live CI/CD Dynamic Badge Banner -->
   <div class="card card-hoverable mb-xl" style="background: linear-gradient(135deg, var(--color-surface), var(--color-surface-sunken)); border: 1px solid var(--color-border-subtle);">

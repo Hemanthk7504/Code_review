@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Repositories (Preview) · CodeSentinel{% endblock %}
 {% block breadcrumb %}Repositories{% endblock %}
@@ -20,6 +21,36 @@
       <span>+ Connect Repository</span>
     </button>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'repositories',
+    'Connected Repositories & Fleet Management Engine',
+    'Fleet-wide VCS synchronization, default branch monitoring, automated webhook telemetry, and scheduled security scans',
+    [
+      {'num': '01', 'title': 'Repository Discovery & Ingestion', 'desc': 'Connects GitHub/GitLab organizations and synchronizes active git remotes.'},
+      {'num': '02', 'title': 'Branch Protection & Policy Linking', 'desc': 'Binds organization Quality Gate policies to protected default branches (main/master/release).'},
+      {'num': '03', 'title': 'Automated Webhook Dispatch', 'desc': 'Listens for pull_request and push webhooks to trigger immediate background reviews.'},
+      {'num': '04', 'title': 'Scheduled Fleet Scans', 'desc': 'Executes recurring nightly or weekly security audits across the entire codebase portfolio.'}
+    ],
+    [
+      'Multi-tenant repository registry tracking default branches, commit SHAs, and webhook endpoint health.',
+      'Automated webhook listener dispatching asynchronous worker jobs upon git push or PR open events.',
+      'Health monitor detects stale webhook deliveries and ping response latencies.',
+      'Fleet-wide aggregation tracks portfolio risk scores across distributed microservices.'
+    ],
+    [
+      'View all connected repositories along with their default branch, active defects, and CVSS risk scores.',
+      'Check the Webhook Health column to confirm real-time synchronization status.',
+      'Trigger on-demand fleet scans or configure branch targeting rules per repository.'
+    ],
+    [
+      {'term': 'Fleet Management', 'def': 'Centralized governance and scanning of multiple code repositories across an enterprise.'},
+      {'term': 'Webhook Health', 'def': 'Status indicator showing whether GitHub webhook pings are successfully delivering payloads.'},
+      {'term': 'Default Branch', 'def': 'The primary branch (usually main) receiving merged pull requests and production deployments.'},
+      {'term': 'Monorepo Support', 'def': 'Capacity to isolate and scan distinct sub-packages within a single large git repository.'}
+    ]
+  ) }}
 
   <div class="card">
     <div class="table-responsive">

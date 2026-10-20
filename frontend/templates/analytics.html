@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "components/explainer.html" import page_explainer %}
 
 {% block title %}Security & Quality Analytics · CodeSentinel{% endblock %}
 {% block breadcrumb %}Analytics{% endblock %}
@@ -30,6 +31,37 @@
       </button>
     </div>
   </div>
+
+  <!-- In-Page Architecture & Process Guide -->
+  {{ page_explainer(
+    'analytics',
+    'Empirical Quality Telemetry & Security Analytics',
+    'Temporal vulnerability trends, agentic precision scoring, false-positive refutation tracking, and MTTR benchmarking',
+    [
+      {'num': '01', 'title': 'Multi-Dimensional Aggregation', 'desc': 'Compiles review run histories, verified flaw rates, false-alarm suppressions, and revision outcomes.'},
+      {'num': '02', 'title': 'Temporal Velocity Analysis', 'desc': 'Computes moving averages of defect density per KLOC, MTTR (Mean Time to Remediation), and risk velocity.'},
+      {'num': '03', 'title': 'Precision vs Recall Benchmarking', 'desc': 'Assesses multi-agent consensus reliability using verified vs rejected verification ratios.'},
+      {'num': '04', 'title': 'CSV & Executive Reporting', 'desc': 'Formats time-series metrics for data science export or executive security briefings.'}
+    ],
+    [
+      'SQL window functions computing rolling 7-day, 30-day, and 90-day defect arrival rates and risk velocity.',
+      'False positive refutation tracking measures how many initial rule hits were safely dismissed by skeptical AST and semantic filters.',
+      'Tracks revision pass rates over time to quantify how often LLM self-repair generates immediately mergeable patches.',
+      'Correlates CWE defect classes across microservices to isolate systematic security training deficits.'
+    ],
+    [
+      'Toggle time horizons (7D, 30D, 90D, All) to observe security trends and velocity curves.',
+      'Inspect the Defect Density per KLOC and Precision metrics to verify multi-agent accuracy.',
+      'Review the Category Distribution breakdown to identify organizational training needs (e.g. SQL injection vs Secrets).',
+      'Click "Export CSV" to download raw evaluation points for external BI dashboards (Tableau, PowerBI).'
+    ],
+    [
+      {'term': 'Defect Density', 'def': 'Number of verified code flaws per thousand lines of code (KLOC).'},
+      {'term': 'MTTR', 'def': 'Mean Time to Remediation — average duration from defect detection to merged fix.'},
+      {'term': 'Precision', 'def': 'Ratio of true positive vulnerabilities to total alerts raised by scanners.'},
+      {'term': 'Risk Velocity', 'def': 'The rate of change in composite CVSS risk over successive codebase commits.'}
+    ]
+  ) }}
 
   <!-- Metric Cards Grid -->
   <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));">
