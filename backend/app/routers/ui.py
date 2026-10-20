@@ -40,6 +40,7 @@ async def new_review_view(request: Request):
 
 
 @ui_router.get("/review/results", response_class=HTMLResponse)
+@ui_router.get("/results", response_class=HTMLResponse)
 async def results_view(request: Request):
     return templates.TemplateResponse(request=request, name="results.html", context={"active_page": "results"})
 
