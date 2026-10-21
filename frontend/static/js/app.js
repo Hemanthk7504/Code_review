@@ -15,6 +15,7 @@ const App = {
     this.initKeybindings();
     this.initProcessGuide();
     this.initPageExplainers();
+    this.initButtonEffects();
   },
 
   /* ==========================================================================
@@ -960,6 +961,33 @@ const App = {
         if (text) text.innerText = 'Explain This Page';
       }
     });
+  },
+
+  /* ==========================================================================
+     High-Quality Tactile Button Ripple Interaction
+     ========================================================================== */
+  initButtonEffects() {
+    document.addEventListener('pointerdown', (e) => {
+      const btn = e.target.closest('.btn');
+      if (!btn || btn.disabled || btn.getAttribute('aria-disabled') === 'true') return;
+
+      const rect = btn.getBoundingClientRect();
+      const ripple = document.createElement('span');
+      ripple.className = 'btn-ripple-wave';
+
+      const size = Math.max(rect.width, rect.height) * 1.6;
+      ripple.style.width = `${size}px`;
+      ripple.style.height = `${size}px`;
+      ripple.style.left = `${e.clientX - rect.left}px`;
+      ripple.style.top = `${e.clientY - rect.top}px`;
+
+      btn.appendChild(ripple);
+      setTimeout(() => {
+        if (ripple.parentNode === btn) {
+          btn.removeChild(ripple);
+        }
+      }, 700);
+    }, { passive: true });
   }
 };
 

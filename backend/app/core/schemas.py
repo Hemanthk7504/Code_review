@@ -172,6 +172,11 @@ class PullRequestRequest(BaseModel):
     create_revision_pr: bool = True
 
 
+class ValidateRepoRequest(BaseModel):
+    repo: str
+    github_token: Optional[str] = None
+
+
 class JobInfo(BaseModel):
     job_id: str
     status: str  # queued | running | done | failed

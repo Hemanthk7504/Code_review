@@ -177,9 +177,14 @@
               CodeSentinel detected flaws, synthesized AST remediations, and created a new pull request on GitHub.
             </div>
           </div>
-          <a id="job-pr-link" href="#" target="_blank" class="btn btn-primary btn-sm">
-            <span>Open Pull Request on GitHub ↗</span>
-          </a>
+          <div style="display: flex; gap: var(--space-xs); flex-wrap: wrap;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="JobsController.openInReviewResults()">
+              <span>View Findings in Review Results →</span>
+            </button>
+            <a id="job-pr-link" href="#" target="_blank" class="btn btn-primary btn-sm">
+              <span>Open Pull Request on GitHub ↗</span>
+            </a>
+          </div>
         </div>
       </div>
 

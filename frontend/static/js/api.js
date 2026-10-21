@@ -198,6 +198,16 @@ const API = {
     });
   },
 
+  // Validate GitHub repository access and metadata
+  async validateGitHubRepo(repo, token = null) {
+    const body = { repo };
+    if (token) body.github_token = token;
+    return this.request('/api/v1/github/validate', {
+      method: 'POST',
+      body: JSON.stringify(body)
+    });
+  },
+
   // Get Job status
   async getJob(jobId) {
     return this.request(`/api/v1/jobs/${encodeURIComponent(jobId)}`);

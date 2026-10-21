@@ -142,3 +142,34 @@
   mask-composite: exclude;
   z-index: -1;
 }
+
+/* ==========================================================================
+   Tactile Button Click Ripple Wave
+   ========================================================================== */
+.btn-ripple-wave {
+  position: absolute;
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: btnRippleAnim 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.45) 0%, rgba(255, 255, 255, 0) 70%);
+  pointer-events: none;
+  z-index: 2;
+}
+
+[data-theme="light"] .btn-secondary .btn-ripple-wave,
+[data-theme="light"] .btn-ghost .btn-ripple-wave,
+[data-theme="light"] .btn-outline-secondary .btn-ripple-wave {
+  background: radial-gradient(circle, rgba(99, 102, 241, 0.35) 0%, rgba(99, 102, 241, 0) 70%);
+}
+
+@keyframes btnRippleAnim {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0.9;
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(2.8);
+    opacity: 0;
+  }
+}
+

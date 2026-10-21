@@ -1,5 +1,6 @@
 """HTTP endpoints."""
 import json
+import re
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Header, HTTPException, Request, UploadFile
@@ -12,7 +13,7 @@ from ..engine.pipeline import process_pull_request, review_and_revise, review_fi
 from ..core.schemas import (ComplianceScorecardRequest, ComplianceScorecardResult, DependencyScanRequest, DependencyScanResult,
                       FileInput, FullResult, IntegrationConfig, IntegrationTestRequest,
                       JobInfo, PolicyEvaluationRequest, PolicyEvaluationResult, PullRequestRequest, QualityGatePolicy,
-                      QuickAuditRequest, ReviewRequest, ReviewResult, SarifExportRequest)
+                      QuickAuditRequest, ReviewRequest, ReviewResult, SarifExportRequest, ValidateRepoRequest)
 from ..utils.security import require_api_key, verify_github_signature
 
 
@@ -82,6 +83,39 @@ def _queue(background: BackgroundTasks, repo: str, number: Optional[int], token:
 async def github_pull_request(req: PullRequestRequest, background: BackgroundTasks):
     """Called by the GitHub Action. Returns a job id right away; the work runs in the background."""
     return _queue(background, req.repo, req.pr_number, req.github_token, req.create_revision_pr)
+
+
+@router.post("/github/validate", dependencies=protected)
+async def validate_github_repo(req: ValidateRepoRequest):
+    """Validates connectivity and access to a public or private GitHub repository."""
+    from ..services.github_client import GitHubClient
+    raw = req.repo.strip()
+    clean = raw
+    if "github.com/" in clean:
+        m = re.search(r"github\.com/([^/]+/[^/]+?)(?:\.git|/|$)", clean, re.IGNORECASE)
+        if m:
+            clean = m.group(1)
+    clean = clean.strip("/").rstrip(".git")
+
+    gh = GitHubClient(req.github_token)
+    try:
+        data = await gh.get_repo(clean)
+        return {
+            "valid": True,
+            "repo": data.get("full_name", clean),
+            "default_branch": data.get("default_branch", "main"),
+            "private": data.get("private", False),
+            "description": data.get("description", ""),
+            "has_token": bool(gh.token),
+            "stars": data.get("stargazers_count", 0),
+            "open_issues": data.get("open_issues_count", 0)
+        }
+    except Exception as e:
+        return {
+            "valid": False,
+            "error": str(e),
+            "repo": clean
+        }
 
 
 @router.post("/github/webhook")

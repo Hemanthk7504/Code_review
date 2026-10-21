@@ -472,9 +472,13 @@ def safe_total(values: str, cache: dict = None) -> int:
     }
 
     // If review is completely empty or missing, auto-fallback to SampleReviewData
-    const hasFindings = parsed && parsed.data && (
-      (parsed.data.review && parsed.data.review.findings && parsed.data.review.findings.length > 0) ||
-      (parsed.data.findings && parsed.data.findings.length > 0)
+    const hasFindings = parsed && (
+      (parsed.data && (
+        (parsed.data.review && parsed.data.review.findings && parsed.data.review.findings.length > 0) ||
+        (parsed.data.findings && parsed.data.findings.length > 0)
+      )) ||
+      (parsed.findings && parsed.findings.length > 0) ||
+      (parsed.review && parsed.review.findings && parsed.review.findings.length > 0)
     );
 
     if (!hasFindings && typeof SampleReviewData !== 'undefined' && SampleReviewData) {
@@ -488,9 +492,11 @@ def safe_total(values: str, cache: dict = None) -> int:
     } else {
       try {
         this.isFullLoop = Boolean(parsed.isFullLoop);
-        this.notes = (parsed.data && parsed.data.notes) || [];
+        this.notes = (parsed.data && parsed.data.notes) || parsed.notes || [];
         this.savedFiles = parsed.files || [];
-        this.currentResult = parsed.data && parsed.data.review ? parsed.data.review : (parsed.data || emptyResult);
+        this.currentResult = (parsed.data && parsed.data.review) ? parsed.data.review :
+                             (parsed.data ? parsed.data :
+                             (parsed.review ? parsed.review : (parsed.findings ? parsed : emptyResult)));
 
         // 1. If backend returned actual revisions (e.g. from LLM or FullResult)
         if (parsed.data && parsed.data.revisions && parsed.data.revisions.length > 0) {

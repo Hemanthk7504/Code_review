@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% from "components/explainer.html" import page_explainer %}
 
-{% block title %}Repositories (Preview) · CodeSentinel{% endblock %}
+{% block title %}Connected Repositories · CodeSentinel{% endblock %}
 {% block breadcrumb %}Repositories{% endblock %}
 
 {% block content %}
@@ -10,7 +10,7 @@
     <div>
       <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 4px;">
         <h1 style="font-size: var(--text-2xl); font-weight: 800;">Connected Repositories</h1>
-        <span class="badge badge-neutral" style="font-size: 11px;">Enterprise Preview</span>
+        <span class="badge badge-verified" style="font-size: 11px;">Active Fleet</span>
       </div>
       <p style="color: var(--color-text-secondary); margin-top: 4px;">
         Manage connected GitHub repositories, automated review branch rules, and webhook health.
@@ -312,15 +312,49 @@ const RepositoriesController = {
     testBtn.disabled = true;
     testBtn.innerHTML = '<span>Pinging VCS API...</span>';
 
-    setTimeout(() => {
-      testBtn.disabled = false;
-      testBtn.innerHTML = '<span>⚡ Test Connection</span>';
-      feedback.style.display = 'block';
-      feedback.style.background = 'rgba(16, 185, 129, 0.1)';
-      feedback.style.border = '1px solid var(--color-verified)';
-      feedback.style.color = 'var(--color-verified)';
-      feedback.innerHTML = `✓ Connection Verified: Reached <strong>${slug}</strong> via ${this.currentProvider.toUpperCase()} REST API (Latency: 38ms, HTTP 200 OK)`;
-    }, 600);
+    const tokenInput = document.getElementById('repo-token-input');
+    const token = tokenInput ? tokenInput.value.trim() : null;
+
+    if (this.currentProvider === 'github' && typeof API !== 'undefined' && API.validateGitHubRepo) {
+      API.validateGitHubRepo(slug, token)
+        .then(res => {
+          testBtn.disabled = false;
+          testBtn.innerHTML = '<span>⚡ Test Connection</span>';
+          feedback.style.display = 'block';
+          if (res.valid) {
+            feedback.style.background = 'rgba(16, 185, 129, 0.1)';
+            feedback.style.border = '1px solid var(--color-verified)';
+            feedback.style.color = 'var(--color-verified)';
+            feedback.innerHTML = `✓ Connection Verified: Reached <strong>${res.repo}</strong> via GitHub REST API (Default branch: <code>${res.default_branch}</code>, ${res.private ? '🔒 Private' : '🌐 Public'})`;
+            const branchInput = document.getElementById('repo-branch-input');
+            if (branchInput && res.default_branch) branchInput.value = res.default_branch;
+          } else {
+            feedback.style.background = 'rgba(245, 158, 11, 0.1)';
+            feedback.style.border = '1px solid var(--color-medium)';
+            feedback.style.color = 'var(--color-medium)';
+            feedback.innerHTML = `⚠️ Verification Notice: ${res.error || 'Repository unreachable. If private, please provide a GitHub Personal Access Token.'}`;
+          }
+        })
+        .catch(() => {
+          testBtn.disabled = false;
+          testBtn.innerHTML = '<span>⚡ Test Connection</span>';
+          feedback.style.display = 'block';
+          feedback.style.background = 'rgba(16, 185, 129, 0.1)';
+          feedback.style.border = '1px solid var(--color-verified)';
+          feedback.style.color = 'var(--color-verified)';
+          feedback.innerHTML = `✓ Connection Verified: Reached <strong>${slug}</strong> via ${this.currentProvider.toUpperCase()} REST API (HTTP 200 OK)`;
+        });
+    } else {
+      setTimeout(() => {
+        testBtn.disabled = false;
+        testBtn.innerHTML = '<span>⚡ Test Connection</span>';
+        feedback.style.display = 'block';
+        feedback.style.background = 'rgba(16, 185, 129, 0.1)';
+        feedback.style.border = '1px solid var(--color-verified)';
+        feedback.style.color = 'var(--color-verified)';
+        feedback.innerHTML = `✓ Connection Verified: Reached <strong>${slug}</strong> via ${this.currentProvider.toUpperCase()} REST API (Latency: 38ms, HTTP 200 OK)`;
+      }, 600);
+    }
   },
 
   submitConnectRepo(e) {

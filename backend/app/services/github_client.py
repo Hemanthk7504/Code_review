@@ -107,6 +107,10 @@ class GitHubClient:
     async def get_pull(self, repo: str, number: int) -> dict:
         return await self._request("GET", f"/repos/{repo}/pulls/{number}")
 
+    async def get_repo(self, repo: str) -> dict:
+        """Fetch repository metadata and verify access."""
+        return await self._request("GET", f"/repos/{repo}")
+
     async def list_pull_files(self, repo: str, number: int) -> list[dict]:
         files, page = [], 1
         while True:

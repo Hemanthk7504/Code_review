@@ -239,9 +239,12 @@ const JobsController = {
           <td><span class="badge ${badgeCls}">${j.status}</span></td>
           <td style="color: var(--color-text-muted); font-size: var(--text-xs);">${timeStr}</td>
           <td style="text-align: right;">
-            ${j.result && j.result.revision_pr ?
-              `<a href="${j.result.revision_pr}" target="_blank" class="btn btn-sm btn-secondary" style="font-size:11px;">View PR ↗</a>` :
-              `<button class="btn btn-sm btn-ghost" onclick="JobsController.inspectJob('${j.job_id}')">Inspect</button>`}
+            <div style="display: inline-flex; gap: 4px; justify-content: flex-end;">
+              <button class="btn btn-xs btn-secondary" onclick="JobsController.inspectJob('${j.job_id}')">Inspect</button>
+              ${j.result ? `<button class="btn btn-xs btn-primary" onclick="JobsController.openInReviewResults('${j.job_id}')">Results →</button>` : ''}
+              ${j.result && j.result.revision_pr ?
+                `<a href="${j.result.revision_pr}" target="_blank" class="btn btn-xs btn-outline-primary">PR ↗</a>` : ''}
+            </div>
           </td>
         </tr>
       `;
@@ -255,6 +258,34 @@ const JobsController = {
       App.showToast('Job Details Loaded', `Viewing status for ${jobId.substring(0, 8)}`, 'info');
     } catch (e) {
       App.showToast('Error', e.message, 'error');
+    }
+  },
+
+  async openInReviewResults(jobId) {
+    try {
+      const targetId = jobId || this.activeJobId;
+      if (!targetId) {
+        window.location.href = '/review/results';
+        return;
+      }
+      const job = await API.getJob(targetId);
+      if (!job || !job.result) {
+        App.showToast('No Findings Yet', 'Job has not completed or findings are still processing.', 'warning');
+        return;
+      }
+      const reviewPayload = {
+        isFullLoop: true,
+        timestamp: new Date().toISOString(),
+        files: job.result.files || [],
+        data: job.result.review ? job.result : { review: job.result, revisions: job.result.revisions || [] }
+      };
+      localStorage.setItem('codesentinel_last_review', JSON.stringify(reviewPayload));
+      App.showToast('Opening Results', 'Transferring audit findings to Review Results...', 'success');
+      setTimeout(() => {
+        window.location.href = '/review/results';
+      }, 400);
+    } catch (e) {
+      App.showToast('Error Loading Results', e.message, 'error');
     }
   }
 };
