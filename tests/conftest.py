@@ -17,6 +17,12 @@ if str(BACKEND_DIR) not in sys.path:
 
 import app  # Preload app package and registered module aliases
 
+# Mirror all app.* submodules under backend.app.* and vice-versa
+sys.modules["backend.app"] = app
+for k, v in list(sys.modules.items()):
+    if k.startswith("app."):
+        sys.modules["backend." + k] = v
+
 import pytest
 
 

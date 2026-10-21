@@ -77,11 +77,11 @@ class Finding(BaseModel):
 
     @property
     def static_sources(self) -> list[str]:
-        return [s for s in self.sources if s in STATIC_TOOLS]
+        return [s for s in self.sources if s in STATIC_TOOLS or "static" in s.lower() or "scanner" in s.lower() or "analyzer" in s.lower() or "ast" in s.lower()]
 
     @property
     def ai_sources(self) -> list[str]:
-        return [s for s in self.sources if s not in STATIC_TOOLS]
+        return [s for s in self.sources if s not in self.static_sources]
 
 
 class ChangeExplanation(BaseModel):
@@ -114,6 +114,9 @@ class RevisionValidation(BaseModel):
     risk_before: float
     risk_after: float
     reasons: list[str] = Field(default_factory=list)
+    tests_executed: bool = False
+    tests_passed: bool = True
+    test_logs: Optional[str] = None
 
 
 class ReviewSummary(BaseModel):
@@ -163,8 +166,8 @@ class ReviewRequest(BaseModel):
 
 
 class PullRequestRequest(BaseModel):
-    repo: str  # "owner/name"
-    pr_number: int
+    repo: str  # "owner/name" or full GitHub URL
+    pr_number: Optional[int] = None
     github_token: Optional[str] = None
     create_revision_pr: bool = True
 

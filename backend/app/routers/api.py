@@ -71,7 +71,7 @@ async def revise(req: ReviewRequest):
     return await review_and_revise(req.files)
 
 
-def _queue(background: BackgroundTasks, repo: str, number: int, token: Optional[str], create_pr: bool) -> JobInfo:
+def _queue(background: BackgroundTasks, repo: str, number: Optional[int], token: Optional[str], create_pr: bool) -> JobInfo:
     job = jobs.create_job()
     background.add_task(jobs.run_job, job.job_id,
                         lambda: process_pull_request(repo, number, token, create_pr, job_id=job.job_id))
@@ -147,6 +147,77 @@ async def engine_metrics():
         "generate_unit_tests": s.generate_unit_tests,
         "secrets_scanner": s.enable_secrets_scanner,
         "cwe_mapping": s.enable_cwe_mapping,
+    }
+
+
+@router.get("/analytics/metrics")
+async def get_analytics_metrics():
+    """Retrieve real measured accuracy and performance metrics from the empirical benchmark
+    and live review repository telemetry."""
+    from ..benchmark.evaluator import get_or_run_benchmark
+    bench = await get_or_run_benchmark()
+
+    # Query DB review history to aggregate live telemetry
+    total_reviews = 0
+    total_files = 0
+    total_findings = 0
+    verified_findings = 0
+    avg_risk = 0.0
+
+    try:
+        from ..db.session import SessionLocal
+        from ..models.review import ReviewRecordModel
+        with SessionLocal() as db:
+            records = db.query(ReviewRecordModel).all()
+            total_reviews = len(records)
+            if total_reviews > 0:
+                total_files = sum(r.files_analyzed for r in records)
+                total_findings = sum(r.total_findings for r in records)
+                verified_findings = sum(r.verified_findings for r in records)
+                avg_risk = round(sum(r.overall_risk for r in records) / total_reviews, 1)
+    except Exception as db_err:
+        pass
+
+    return {
+        "status": "success",
+        "benchmark": {
+            "evaluated_at": bench.evaluated_at,
+            "total_cases": bench.total_cases,
+            "true_positives": bench.true_positives,
+            "false_positives": bench.false_positives,
+            "true_negatives": bench.true_negatives,
+            "false_negatives": bench.false_negatives,
+            "precision": bench.precision,
+            "precision_percent": round(bench.precision * 100, 1),
+            "recall": bench.recall,
+            "recall_percent": round(bench.recall * 100, 1),
+            "false_positive_rate": bench.false_positive_rate,
+            "false_positive_rate_percent": round(bench.false_positive_rate * 100, 1),
+            "accuracy": bench.accuracy,
+            "accuracy_percent": round(bench.accuracy * 100, 1),
+            "f1_score": bench.f1_score,
+            "target_precision_met": bench.target_precision_met,
+            "revision_success_rate": bench.revision_success_rate,
+            "revision_success_rate_percent": round(bench.revision_success_rate * 100, 1),
+            "newly_introduced_defect_rate": bench.newly_introduced_defect_rate,
+            "newly_introduced_defect_rate_percent": round(bench.newly_introduced_defect_rate * 100, 1),
+            "by_language": {
+                k: {
+                    "cases": v.total_cases,
+                    "precision": round(v.precision * 100, 1),
+                    "recall": round(v.recall * 100, 1),
+                    "fpr": round(v.false_positive_rate * 100, 1),
+                }
+                for k, v in bench.by_language.items()
+            }
+        },
+        "telemetry": {
+            "total_reviews": total_reviews,
+            "total_files_analyzed": total_files,
+            "total_findings": total_findings,
+            "verified_findings": verified_findings,
+            "average_risk": avg_risk,
+        }
     }
 
 

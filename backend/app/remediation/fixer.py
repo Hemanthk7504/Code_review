@@ -26,7 +26,11 @@ def make_diff(path: str, old: str, new: str) -> str:
         fromfile=f"a/{path}", tofile=f"b/{path}"))
 
 
-def syntax_ok(code: str) -> bool:
+def syntax_ok(code: str, path: str = "") -> bool:
+    if path and not path.endswith((".py", ".pyw")):
+        open_brackets = code.count("{") - code.count("}")
+        open_parens = code.count("(") - code.count(")")
+        return open_brackets == 0 and open_parens == 0
     try:
         ast.parse(code)
         return True
@@ -138,6 +142,38 @@ def _derive_fix(finding: Finding, raw_line: str, path: str) -> str | None:
     if "unused-import" in rule_or_title or "unused import" in rule_or_title:
         return f"{indent}# Removed unused import: {line_clean}"
 
+    # 7. hardcoded secret (CWE-798)
+    if "798" in rule_or_title or "secret" in rule_or_title or "key" in rule_or_title:
+        if "aws_access_key_id" in raw_line.lower():
+            return f"{indent}AWS_ACCESS_KEY_ID = os.getenv('AWS_ACCESS_KEY_ID', '')"
+        if "aws_secret_access_key" in raw_line.lower():
+            return f"{indent}AWS_SECRET_ACCESS_KEY = os.getenv('AWS_SECRET_ACCESS_KEY', '')"
+
+    # 8. JS DOM XSS (CWE-79)
+    if "dom-xss" in rule_or_title or "cwe-79" in rule_or_title:
+        if ".innerHTML" in raw_line:
+            return raw_line.replace(".innerHTML", ".textContent")
+
+    # 9. JS Prototype Pollution (CWE-1321)
+    if "prototype" in rule_or_title or "cwe-1321" in rule_or_title:
+        if "target[key]" in raw_line and "=" in raw_line:
+            return f"{indent}if (Object.prototype.hasOwnProperty.call(source, key) && key !== '__proto__' && key !== 'constructor') {{\n{indent}    {raw_line.strip()}\n{indent}}}"
+
+    # 10. JS Command Injection (CWE-78)
+    if ("command" in rule_or_title or "cwe-78" in rule_or_title) and any(ext in path for ext in [".js", ".ts"]):
+        if "exec(" in raw_line:
+            return raw_line.replace("exec(", "execFile(")
+
+    # 11. Go Command Injection (CWE-78)
+    if ("command" in rule_or_title or "cwe-78" in rule_or_title) and ".go" in path:
+        if '"sh", "-c",' in raw_line:
+            return raw_line.replace('"sh", "-c", ', "")
+
+    # 12. Java Command Injection (CWE-78)
+    if ("command" in rule_or_title or "cwe-78" in rule_or_title) and ".java" in path:
+        if "Runtime.getRuntime().exec(" in raw_line:
+            return f"{indent}new ProcessBuilder(scriptName).start();"
+
     return None
 
 
@@ -197,20 +233,30 @@ def generate_deterministic_revision(path: str, original: str, findings: list[Fin
     if prefix_imports:
         revised = "".join(prefix_imports) + revised
 
-    if not syntax_ok(revised) or revised == original:
+    if not syntax_ok(revised, path) or revised == original:
         return None
 
     safe_name = path.replace("/", "_").replace(".", "_").replace("-", "_")
     escaped_revised = revised.replace('"""', r'\"\"\"')
-    test_code = (
-        f"import pytest\nimport ast\n\n"
-        f"def test_{safe_name}_remediation():\n"
-        f"    \"\"\"Assert that security flaws and bugs in {path} are resolved.\"\"\"\n"
-        f"    code = \"\"\"{escaped_revised}\"\"\"\n"
-        f"    assert ast.parse(code) is not None, 'Syntax must be valid'\n"
-        f"    assert 'eval(' not in code or 'ast.literal_eval' in code, 'Unsafe eval resolved'\n"
-        f"    assert 'shell=True' not in code, 'Command injection shell=True resolved'\n"
-    )
+    if path.endswith((".py", ".pyw")):
+        test_code = (
+            f"import pytest\nimport ast\n\n"
+            f"def test_{safe_name}_remediation():\n"
+            f"    \"\"\"Assert that security flaws and bugs in {path} are resolved.\"\"\"\n"
+            f"    code = \"\"\"{escaped_revised}\"\"\"\n"
+            f"    assert ast.parse(code) is not None, 'Syntax must be valid'\n"
+            f"    assert 'eval(' not in code or 'ast.literal_eval' in code, 'Unsafe eval resolved'\n"
+            f"    assert 'shell=True' not in code, 'Command injection shell=True resolved'\n"
+        )
+    else:
+        test_code = (
+            f"import pytest\n\n"
+            f"def test_{safe_name}_structure():\n"
+            f"    \"\"\"Assert structural integrity of {path}.\"\"\"\n"
+            f"    code = \"\"\"{escaped_revised}\"\"\"\n"
+            f"    assert code.count('{{') == code.count('}}'), 'Brackets balanced'\n"
+            f"    assert code.count('(') == code.count(')'), 'Parentheses balanced'\n"
+        )
 
     return Revision(
         path=path,

@@ -11,6 +11,7 @@ from ..engine.analysis import analyze_files
 from ..core.config import get_settings
 from ..engine.risk import overall_risk
 from ..core.schemas import FileInput, Finding, Revision, RevisionValidation, VerificationStatus
+from .sandbox import run_revision_tests_isolated
 
 
 
@@ -95,10 +96,23 @@ async def validate_revision(revision: Revision, original_findings: list[Finding]
     if risk_before > 0 and risk_after >= risk_before:
         reasons.append(f"Overall risk did not go down ({risk_before} -> {risk_after}).")
 
+    tests_executed = False
+    tests_passed = True
+    test_logs: Optional[str] = None
+
+    if not reasons:
+        test_passed, stdout_log, err_msg = run_revision_tests_isolated(revision)
+        tests_executed = True
+        tests_passed = test_passed
+        test_logs = err_msg if not test_passed else stdout_log
+        if not test_passed:
+            reasons.append(f"Isolated companion test execution failed: {err_msg or stdout_log}")
+
     accepted = not reasons
     if accepted:
         reasons.append("All validation checks passed.")
     return RevisionValidation(
         path=path, accepted=accepted, syntax_ok=True, targeted=len(targeted), resolved=resolved,
         resolution_ratio=ratio, unresolved_finding_ids=unresolved, new_findings=new_findings,
-        risk_before=risk_before, risk_after=risk_after, reasons=reasons)
+        risk_before=risk_before, risk_after=risk_after, reasons=reasons,
+        tests_executed=tests_executed, tests_passed=tests_passed, test_logs=test_logs)
