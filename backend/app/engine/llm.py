@@ -146,7 +146,7 @@ class LLMClient:
             "max_tokens": max_tokens,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         }
-        headers = {"Authorization": f"Bearer {s.llm_api_key}", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {s.effective_llm_api_key}", "Content-Type": "application/json"}
         url = s.llm_base_url.rstrip("/") + "/chat/completions"
         timeout = s.llm_timeout
 

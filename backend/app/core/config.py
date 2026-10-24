@@ -18,10 +18,11 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 1440  # 24 hours
     jwt_refresh_token_expire_days: int = 7
 
-    # LLM (any OpenAI-compatible chat completions API; default is NVIDIA NIM)
+    # LLM (NVIDIA NIM API; default: nvidia/nemotron-3.5-lightning-30b-a3b)
     llm_enabled: bool = True
     llm_base_url: str = "https://integrate.api.nvidia.com/v1"
     llm_api_key: str = ""
+    nvidia_api_key: str = ""
     llm_model: str = "nvidia/nemotron-3.5-lightning-30b-a3b"
     llm_timeout: float = 120.0
     llm_temperature: float = 0.1
@@ -52,8 +53,13 @@ class Settings(BaseSettings):
     verify_risk_weight: float = 0.3
 
     @property
+    def effective_llm_api_key(self) -> str:
+        import os
+        return self.llm_api_key or self.nvidia_api_key or os.getenv("NVIDIA_API_KEY", "") or os.getenv("LLM_API_KEY", "")
+
+    @property
     def llm_ready(self) -> bool:
-        return self.llm_enabled and bool(self.llm_api_key)
+        return self.llm_enabled and bool(self.effective_llm_api_key)
 
 
 def get_settings() -> Settings:

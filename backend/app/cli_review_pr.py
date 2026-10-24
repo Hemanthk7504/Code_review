@@ -25,7 +25,14 @@ async def async_main():
     token = args.token or os.getenv("GITHUB_TOKEN")
     create_revision_pr = not args.no_create_pr
 
+    from .engine.llm import llm_client
+    from .core.config import get_settings
+    s = get_settings()
     print(f"🚀 Starting CodeSentinel review on PR #{args.pr} in {args.repo}...")
+    if llm_client.enabled:
+        print(f"🤖 NVIDIA Cognitive Engine: Active ({s.llm_model} @ {s.llm_base_url})")
+    else:
+        print(f"⚡ NVIDIA Cognitive Engine: Offline / Static Mode (Set NVIDIA_API_KEY or LLM_API_KEY in environment/secrets)")
     try:
         result = await process_pull_request(args.repo, args.pr, token, create_revision_pr=create_revision_pr)
         print("✅ Review completed successfully!")

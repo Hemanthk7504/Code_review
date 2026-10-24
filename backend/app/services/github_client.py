@@ -133,11 +133,16 @@ class GitHubClient:
                             json={"ref": f"refs/heads/{name}", "sha": from_sha})
 
     async def commit_file(self, repo: str, path: str, content: str, message: str,
-                          branch: str, sha: str) -> None:
+                          branch: str, sha: Optional[str] = None) -> None:
         self._require_write_access("commit files")
-        await self._request("PUT", f"/repos/{repo}/contents/{path}", json={
-            "message": message, "branch": branch, "sha": sha,
-            "content": base64.b64encode(content.encode("utf-8")).decode()})
+        payload = {
+            "message": message,
+            "branch": branch,
+            "content": base64.b64encode(content.encode("utf-8")).decode()
+        }
+        if sha:
+            payload["sha"] = sha
+        await self._request("PUT", f"/repos/{repo}/contents/{path}", json=payload)
 
     async def create_pull(self, repo: str, title: str, head: str, base: str, body: str) -> dict:
         self._require_write_access("create pull requests")

@@ -255,7 +255,7 @@ CodeSentinel features 16 fully styled, responsive routes sharing a unified enter
 | 13 | `/repositories` | **Connected Repositories** | Monitored repository fleet, branch tracking, and webhook health status |
 | 14 | `/audit-log` | **Forensic Audit Log** | Tamper-evident cryptographic ledger recording all scans, reviews, and admin actions |
 | 15 | `/team` | **Team & RBAC Management** | Role hierarchy (`admin`, `reviewer`, `developer`, `auditor`) and session monitors |
-| 16 | `/settings` | **Security Settings & Webhooks** | LLM provider switcher (Gemini/OpenAI/Ollama), API tokens, and webhook HMAC secrets |
+| 16 | `/settings` | **Security Settings & Webhooks** | NVIDIA NIM model parameters (`nvidia/nemotron-3.5-lightning-30b-a3b`), API tokens, and webhook HMAC secrets |
 
 ---
 
@@ -367,10 +367,11 @@ API_KEY="your-secret-api-key"
 JWT_SECRET_KEY="super-secret-jwt-signing-key"
 JWT_ALGORITHM="HS256"
 
-# LLM Provider (Optional: static review & deterministic fixes work 100% offline without keys!)
+# NVIDIA NIM Cognitive Engine (Default)
 LLM_ENABLED=true
-LLM_PROVIDER="gemini" # gemini, openai, anthropic, or ollama
-GEMINI_API_KEY=""
+LLM_BASE_URL="https://integrate.api.nvidia.com/v1"
+NVIDIA_API_KEY="" # Or LLM_API_KEY
+LLM_MODEL="nvidia/nemotron-3.5-lightning-30b-a3b"
 
 # GitHub Token (Required for private PR reviews and opening auto-revision PRs)
 GITHUB_TOKEN=""
@@ -441,8 +442,10 @@ jobs:
       - name: Run CodeSentinel Review & Remediation PR
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY || secrets.NVIDIA_API_KEY }}
+          LLM_BASE_URL: ${{ secrets.LLM_BASE_URL || 'https://integrate.api.nvidia.com/v1' }}
+          LLM_MODEL: ${{ secrets.LLM_MODEL || 'nvidia/nemotron-3.5-lightning-30b-a3b' }}
         run: |
           python -m backend.app.cli_review_pr \
             --repo "${{ github.repository }}" \

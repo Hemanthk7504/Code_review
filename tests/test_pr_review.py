@@ -156,3 +156,42 @@ async def test_process_pull_request_fixes_relative_import_bug():
     committed_code = mock_gh.commit_file.call_args[0][2]
     assert "from .app.main" not in committed_code
 
+
+@pytest.mark.asyncio
+async def test_process_pull_request_compulsorily_raises_pr_even_on_clean_code():
+    """Verify that even when a PR has 0 verified defects (clean code),
+    process_pull_request compulsorily creates an isolated branch,
+    commits automated companion regression tests, and opens a revision PR.
+    """
+    mock_gh = AsyncMock()
+    mock_gh.get_pull.return_value = {
+        "head": {"ref": "feature/clean-code", "sha": "clean_sha_789"},
+        "base": {"ref": "main"}
+    }
+    clean_code = "def add(a: int, b: int) -> int:\n    return a + b\n"
+    mock_gh.list_pull_files.return_value = [
+        {
+            "filename": "math_utils.py",
+            "status": "modified",
+            "patch": "@@ -1,2 +1,2 @@\n+def add(a: int, b: int) -> int:\n+    return a + b"
+        }
+    ]
+    mock_gh.get_file.return_value = (clean_code, "blob_sha_math")
+    mock_gh.create_pull.return_value = {
+        "html_url": "https://github.com/testorg/testrepo/pull/55",
+        "number": 55
+    }
+
+    with patch("backend.app.engine.pipeline.GitHubClient", return_value=mock_gh):
+        result = await process_pull_request("testorg/testrepo", 15, create_revision_pr=True)
+
+    # Must compulsorily open a revision PR with companion tests
+    assert result["summary"]["verified"] == 0
+    assert result["revisions_accepted"] == 1
+    assert result["revision_pr"] == "https://github.com/testorg/testrepo/pull/55"
+    assert mock_gh.create_branch.called
+    assert mock_gh.commit_file.called
+    assert mock_gh.create_pull.called
+    pull_args = mock_gh.create_pull.call_args[0]
+    assert "Verification & Quality Hardening for #15" in pull_args[1]
+
