@@ -13,7 +13,7 @@ from ..services import jobs
 from ..services.github_client import GitHubClient, changed_lines_from_patch, parse_repo_and_pr
 from .language import detect_language
 from .llm import llm_client
-from ..utils.report import review_comment, revision_pr_body
+from ..utils.report import generate_inline_review_comments, review_comment, revision_pr_body
 from ..remediation.revalidation import validate_revision
 from .risk import calculate_posture_grade, extract_top_risks, overall_risk, summarize_cwe_counts
 from ..core.schemas import (FileInput, FullResult, ReviewResult, ReviewSummary, RevisionOutcome,
@@ -219,8 +219,17 @@ async def process_pull_request(repo: str, pr_number: Optional[int] = None, token
     _notify("Consolidated Findings", 60, f"Identified {len(full.review.findings)} finding(s) (CVSS: {full.review.summary.overall_risk:.1f}, Grade: {full.review.summary.posture_grade}).")
 
     if gh.token:
+        rich_body = review_comment(full.review, files=files, pr_number=pr_number)
         try:
-            await gh.comment(repo, pr_number, review_comment(full.review))
+            inline_comments = generate_inline_review_comments(full.review.findings, files=files)
+            if inline_comments and hasattr(gh, "create_pull_review"):
+                try:
+                    await gh.create_pull_review(repo, pr_number, head_sha, rich_body, comments=inline_comments, event="COMMENT")
+                except Exception as cr_err:
+                    log.info("create_pull_review inline post skipped: %s", cr_err)
+                    await gh.comment(repo, pr_number, rich_body)
+            else:
+                await gh.comment(repo, pr_number, rich_body)
         except Exception as comment_err:
             log.warning("Failed to post comment to PR #%d: %s", pr_number, comment_err)
             full.notes.append(f"PR comment skipped: {comment_err}")

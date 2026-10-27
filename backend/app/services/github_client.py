@@ -154,6 +154,18 @@ class GitHubClient:
         return await self._request("POST", f"/repos/{repo}/issues/{issue_number}/comments",
                                    json={"body": body})
 
+    async def create_pull_review(self, repo: str, number: int, commit_sha: str, body: str,
+                                 comments: Optional[list[dict]] = None, event: str = "COMMENT") -> dict:
+        self._require_write_access("create pull request reviews")
+        payload = {
+            "commit_id": commit_sha,
+            "body": body,
+            "event": event
+        }
+        if comments:
+            payload["comments"] = comments
+        return await self._request("POST", f"/repos/{repo}/pulls/{number}/reviews", json=payload)
+
 
 def changed_lines_from_patch(patch: Optional[str]) -> Optional[list[int]]:
     """Read the new-file line numbers touched by a unified-diff patch."""

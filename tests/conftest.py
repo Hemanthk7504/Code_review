@@ -58,8 +58,10 @@ def _reset_users():
 
 
 @pytest.fixture(autouse=True)
-def clean_test_users():
-    """Ensure tests run against a clean database state, isolating registered accounts."""
+def clean_test_users(monkeypatch):
+    """Ensure tests run against a clean database state and offline LLM isolation."""
+    from backend.app.core.config import get_settings
+    monkeypatch.setattr(get_settings(), "llm_enabled", False)
     _reset_users()
     yield
     _reset_users()

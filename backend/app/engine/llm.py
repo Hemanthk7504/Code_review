@@ -107,7 +107,12 @@ class LLMClient:
         return get_settings().llm_ready
 
     def _semaphore(self) -> asyncio.Semaphore:
-        if self._sem is None:
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+        sem_loop = getattr(self._sem, "_loop", None) if self._sem is not None else None
+        if self._sem is None or (sem_loop is not None and sem_loop != loop):
             self._sem = asyncio.Semaphore(max(1, get_settings().llm_concurrency))
         return self._sem
 
