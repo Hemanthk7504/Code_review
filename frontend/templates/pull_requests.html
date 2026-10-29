@@ -44,12 +44,57 @@
     ]
   ) }}
 
-  <!-- PR Submission Form Card -->
+  <!-- Connected GitHub Account Status Card -->
+  <div class="card" id="gh-connection-card" style="margin-bottom: var(--space-lg); padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; background: linear-gradient(135deg, rgba(30, 41, 59, 0.7), rgba(15, 23, 42, 0.9)); border: 1px solid rgba(59, 130, 246, 0.3); border-radius: var(--radius-md); box-shadow: var(--shadow-sm);">
+    <div style="display: flex; align-items: center; gap: 14px;">
+      <img id="gh-user-avatar" src="/static/img/avatar.png" style="width: 42px; height: 42px; border-radius: 50%; border: 2px solid var(--color-primary); object-fit: cover;" onerror="this.src='/static/img/avatar.png'" />
+      <div>
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <span style="font-weight: 700; font-size: var(--text-sm);" id="gh-user-name">GitHub Account</span>
+          <span class="badge badge-verified" id="gh-status-indicator">Connected</span>
+        </div>
+        <div style="color: var(--color-text-muted); font-size: var(--text-xs);" id="gh-user-handle">Authenticating with GitHub...</div>
+      </div>
+    </div>
+    <div style="display: flex; align-items: center; gap: 16px;">
+      <div style="text-align: right;">
+        <div style="font-size: 10px; color: var(--color-text-muted); text-transform: uppercase; font-weight: 600;">API Quota Remaining</div>
+        <div style="font-size: var(--text-xs); font-family: var(--font-mono); font-weight: 700; color: var(--color-primary);" id="gh-rate-quota">5,000 / 5,000 requests</div>
+      </div>
+      <button class="btn btn-sm btn-secondary" onclick="JobsController.initGitHubIntegration()">🔄 Sync</button>
+    </div>
+  </div>
+
+  <!-- Live GitHub Repository & Pull Request Explorer Card -->
+  <div class="card" style="margin-bottom: var(--space-xl); border: 1px solid var(--color-border); box-shadow: var(--shadow-sm);">
+    <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--space-sm);">
+      <div style="display: flex; align-items: center; gap: 8px;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+        <h3 class="card-title" style="margin: 0;">Live GitHub Pull Request Explorer</h3>
+      </div>
+      <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+        <label style="font-size: var(--text-xs); color: var(--color-text-muted);">Repository:</label>
+        <select id="gh-repo-select" class="form-control" style="width: auto; min-width: 260px; padding: 4px 10px; font-size: var(--text-xs);" onchange="JobsController.onRepoChange(this.value)">
+          <option value="Hemanthk7504/Code_review">Hemanthk7504/Code_review (Python)</option>
+        </select>
+        <button class="btn btn-sm btn-secondary" onclick="JobsController.loadLivePullRequests()">🔄 Refresh PRs</button>
+      </div>
+    </div>
+
+    <div style="padding: 16px 20px;">
+      <div id="live-prs-loading" style="text-align: center; padding: 24px; color: var(--color-text-muted);">
+        <span class="dot-indicator dot-warning live-pulse"></span> Fetching live pull requests from GitHub API...
+      </div>
+      <div id="live-prs-container"></div>
+    </div>
+  </div>
+
+  <!-- Manual / Custom PR Submission Form Card -->
   <div class="card" style="margin-bottom: var(--space-xl);">
     <div class="card-header">
       <h3 class="card-title">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 14l5-5-5-5"></path><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>
-        <span>Dispatch Pull Request Review</span>
+        <span>Custom or External Pull Request Review</span>
       </h3>
     </div>
 

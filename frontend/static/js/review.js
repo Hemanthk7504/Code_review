@@ -1386,6 +1386,49 @@ def test_${safeFn}_syntax_and_remediation():
     }
   },
 
+  async exportToGitHubIssues() {
+    if (!this.currentResult) {
+      App.showToast('No Audit Data', 'Please run a code review before exporting issues.', 'warning');
+      return;
+    }
+    const findings = (this.currentResult.findings || []).filter(f => f.verification !== 'rejected');
+    if (findings.length === 0) {
+      App.showToast('No Verified Findings', 'No active verified findings available to export.', 'info');
+      return;
+    }
+
+    const defaultRepo = localStorage.getItem('codesentinel_selected_repo') || 'Hemanthk7504/Code_review';
+    const targetRepo = window.prompt(`Export verified finding(s) as GitHub Issues to repository (owner/repo):`, defaultRepo);
+    if (!targetRepo || !targetRepo.trim()) return;
+
+    App.showToast('Exporting Issues', `Exporting findings to ${targetRepo.trim()}...`, 'info');
+
+    let createdCount = 0;
+    const maxToExport = Math.min(findings.length, 5);
+    try {
+      for (let i = 0; i < maxToExport; i++) {
+        const f = findings[i];
+        const sevUpper = (f.severity || 'HIGH').toUpperCase();
+        const title = `[CodeSentinel ${sevUpper}] ${f.title || f.rule_id || 'Security Defect'} in ${f.file}:${f.line}`;
+        const body = `## 🛡️ CodeSentinel Security Advisory\n\n` +
+          `**Severity:** ${sevUpper} | **Category:** ${f.category || 'Security'} | **CWE:** ${f.cwe || 'N/A'}\n` +
+          `**Location:** \`${f.file}\` (Line ${f.line})\n` +
+          `**Risk Score:** ${f.risk_score !== undefined ? f.risk_score : 'N/A'} | **Verification:** Verified Defect\n\n` +
+          `### 📋 Description\n${f.description || f.message || 'No description provided.'}\n\n` +
+          `### 💡 Recommended Remediation\n\`\`\`python\n${f.proposed_fix || f.recommendation || '# Review line and apply safe coding patterns.'}\n\`\`\`\n\n` +
+          `---\n*Automated advisory created by CodeSentinel Multi-Agent Security Engine.*`;
+
+        const labels = ['codesentinel', 'security', (f.severity || 'high').toLowerCase()];
+        await API.createGitHubIssue(targetRepo.trim(), title, body, labels);
+        createdCount++;
+      }
+      localStorage.setItem('codesentinel_selected_repo', targetRepo.trim());
+      App.showToast('Export Successful', `Successfully created ${createdCount} issue(s) on ${targetRepo.trim()}.`, 'success');
+    } catch (err) {
+      App.showToast('Export Failed', err.message || 'Failed to export GitHub issues', 'error');
+    }
+  },
+
   loadSampleAudit(showToast = true) {
     if (typeof SampleReviewData === 'undefined' || !SampleReviewData) return;
     localStorage.setItem('codesentinel_last_review', JSON.stringify(SampleReviewData));

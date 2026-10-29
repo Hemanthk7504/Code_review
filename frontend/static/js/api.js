@@ -208,6 +208,35 @@ const API = {
     });
   },
 
+  // Fetch authenticated GitHub user and rate limits
+  async getGitHubUser(token = null) {
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.get(`/api/v1/github/user${query}`);
+  },
+
+  // List user repositories
+  async listGitHubRepos(token = null) {
+    const query = token ? `?token=${encodeURIComponent(token)}` : '';
+    return this.get(`/api/v1/github/repos${query}`);
+  },
+
+  // List pull requests for a repository
+  async listRepoPulls(owner, repo, state = 'open', token = null) {
+    const query = token ? `?state=${encodeURIComponent(state)}&token=${encodeURIComponent(token)}` : `?state=${encodeURIComponent(state)}`;
+    return this.get(`/api/v1/github/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/pulls${query}`);
+  },
+
+  // Export finding as GitHub Issue
+  async createGitHubIssue(repo, title, body, labels = [], token = null) {
+    return this.post('/api/v1/github/issues', {
+      repo,
+      title,
+      body,
+      labels,
+      github_token: token
+    });
+  },
+
   // Get Job status
   async getJob(jobId) {
     return this.request(`/api/v1/jobs/${encodeURIComponent(jobId)}`);

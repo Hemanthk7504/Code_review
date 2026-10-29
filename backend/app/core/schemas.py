@@ -297,3 +297,11 @@ class DependencyScanRequest(BaseModel):
     content: str
     manifest_type: str = "requirements.txt"  # requirements.txt | pyproject.toml | pipfile
 
+
+class GitHubIssueRequest(BaseModel):
+    repo: str
+    title: str
+    body: str
+    labels: Optional[list[str]] = None
+    github_token: Optional[str] = None
+

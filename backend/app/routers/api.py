@@ -11,7 +11,7 @@ from ..core.config import get_settings
 from ..engine.llm import llm_client
 from ..engine.pipeline import process_pull_request, review_and_revise, review_files
 from ..core.schemas import (ComplianceScorecardRequest, ComplianceScorecardResult, DependencyScanRequest, DependencyScanResult,
-                      FileInput, FullResult, IntegrationConfig, IntegrationTestRequest,
+                      FileInput, FullResult, GitHubIssueRequest, IntegrationConfig, IntegrationTestRequest,
                       JobInfo, PolicyEvaluationRequest, PolicyEvaluationResult, PullRequestRequest, QualityGatePolicy,
                       QuickAuditRequest, ReviewRequest, ReviewResult, SarifExportRequest, ValidateRepoRequest)
 from ..utils.security import require_api_key, verify_github_signature
@@ -118,6 +118,118 @@ async def validate_github_repo(req: ValidateRepoRequest):
         }
 
 
+@router.get("/github/user", dependencies=protected)
+async def get_github_user(token: Optional[str] = None):
+    """Fetch current GitHub user profile, rate limit quotas, and connection status."""
+    from ..services.github_client import GitHubClient
+    gh = GitHubClient(token)
+    if not gh.token:
+        return {"connected": False, "reason": "No GitHub Personal Access Token configured."}
+    try:
+        user = await gh.get_authenticated_user()
+        rate = {}
+        try:
+            rate_data = await gh.get_rate_limit()
+            rate = rate_data.get("resources", {}).get("core", {})
+        except Exception:
+            pass
+        return {
+            "connected": True,
+            "login": user.get("login"),
+            "name": user.get("name") or user.get("login"),
+            "avatar_url": user.get("avatar_url"),
+            "html_url": user.get("html_url"),
+            "public_repos": user.get("public_repos", 0),
+            "total_private_repos": user.get("total_private_repos", 0),
+            "rate_limit": {
+                "remaining": rate.get("remaining", 5000),
+                "limit": rate.get("limit", 5000),
+                "reset": rate.get("reset")
+            }
+        }
+    except Exception as exc:
+        return {"connected": False, "error": str(exc)}
+
+
+@router.get("/github/repos", dependencies=protected)
+async def list_github_repos(token: Optional[str] = None):
+    """List accessible repositories for the configured GitHub token."""
+    from ..services.github_client import GitHubClient
+    gh = GitHubClient(token)
+    if not gh.token:
+        return {"repos": []}
+    try:
+        repos_data = await gh.list_user_repos(sort="updated", per_page=30)
+        formatted = []
+        for r in repos_data:
+            formatted.append({
+                "full_name": r.get("full_name"),
+                "name": r.get("name"),
+                "private": r.get("private", False),
+                "html_url": r.get("html_url"),
+                "description": r.get("description") or "",
+                "default_branch": r.get("default_branch", "main"),
+                "open_issues_count": r.get("open_issues_count", 0),
+                "language": r.get("language") or "Python",
+                "updated_at": r.get("updated_at")
+            })
+        return {"repos": formatted}
+    except Exception as exc:
+        return {"repos": [], "error": str(exc)}
+
+
+@router.get("/github/repos/{owner}/{repo}/pulls", dependencies=protected)
+async def list_repo_pulls(owner: str, repo: str, state: str = "open", token: Optional[str] = None):
+    """List live pull requests for a given repository."""
+    from ..services.github_client import GitHubClient
+    repo_name = f"{owner}/{repo}"
+    gh = GitHubClient(token)
+    try:
+        pulls_data = await gh.list_repo_pulls(repo_name, state=state, per_page=30)
+        formatted = []
+        for p in pulls_data:
+            formatted.append({
+                "number": p.get("number"),
+                "title": p.get("title"),
+                "state": p.get("state"),
+                "html_url": p.get("html_url"),
+                "draft": p.get("draft", False),
+                "created_at": p.get("created_at"),
+                "updated_at": p.get("updated_at"),
+                "user": {
+                    "login": p.get("user", {}).get("login"),
+                    "avatar_url": p.get("user", {}).get("avatar_url")
+                },
+                "head": {
+                    "ref": p.get("head", {}).get("ref"),
+                    "sha": p.get("head", {}).get("sha")
+                },
+                "base": {
+                    "ref": p.get("base", {}).get("ref")
+                }
+            })
+        return {"pulls": formatted, "repo": repo_name}
+    except Exception as exc:
+        return {"pulls": [], "repo": repo_name, "error": str(exc)}
+
+
+@router.post("/github/issues", dependencies=protected)
+async def create_github_issue(req: GitHubIssueRequest):
+    """Export a verified finding as a GitHub Issue on the target repository."""
+    from ..services.github_client import GitHubClient
+    gh = GitHubClient(req.github_token)
+    try:
+        created = await gh.create_issue(req.repo, req.title, req.body, req.labels)
+        return {
+            "success": True,
+            "issue_url": created.get("html_url"),
+            "number": created.get("number"),
+            "title": created.get("title")
+        }
+    except Exception as exc:
+        raise HTTPException(400, f"Failed to create GitHub Issue: {exc}")
+
+
 @router.post("/github/webhook")
 async def github_webhook(request: Request, background: BackgroundTasks,
                          x_github_event: Optional[str] = Header(default=None),
@@ -125,13 +237,28 @@ async def github_webhook(request: Request, background: BackgroundTasks,
     body = await request.body()
     if not verify_github_signature(body, x_hub_signature_256):
         raise HTTPException(401, "Bad webhook signature.")
-    if x_github_event != "pull_request":
-        return {"ignored": x_github_event}
+    
     payload = json.loads(body)
-    if payload.get("action") not in {"opened", "synchronize", "reopened"}:
-        return {"ignored": payload.get("action")}
-    job = _queue(background, payload["repository"]["full_name"], payload["number"], None, True)
-    return {"job_id": job.job_id}
+    
+    # 1. Pull Request Events
+    if x_github_event == "pull_request":
+        if payload.get("action") not in {"opened", "synchronize", "reopened"}:
+            return {"ignored": payload.get("action")}
+        job = _queue(background, payload["repository"]["full_name"], payload["number"], None, True)
+        return {"event": "pull_request", "job_id": job.job_id}
+
+    # 2. Interactive PR Comment Events (@codesentinel review / fix / help)
+    if x_github_event in {"issue_comment", "pull_request_review_comment"}:
+        comment_text = payload.get("comment", {}).get("body", "").lower()
+        if "@codesentinel" in comment_text or "/review" in comment_text or "/fix" in comment_text:
+            repo_name = payload["repository"]["full_name"]
+            issue_number = payload.get("issue", {}).get("number") or payload.get("pull_request", {}).get("number")
+            if issue_number:
+                job = _queue(background, repo_name, issue_number, None, True)
+                return {"event": "chat_command", "job_id": job.job_id, "command_detected": True}
+        return {"ignored": "no command"}
+
+    return {"ignored": x_github_event}
 
 
 @router.get("/jobs/{job_id}", response_model=JobInfo, dependencies=protected)

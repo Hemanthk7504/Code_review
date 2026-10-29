@@ -166,6 +166,49 @@ class GitHubClient:
             payload["comments"] = comments
         return await self._request("POST", f"/repos/{repo}/pulls/{number}/reviews", json=payload)
 
+    async def get_authenticated_user(self) -> dict:
+        """Fetch current authenticated GitHub profile and token identity."""
+        return await self._request("GET", "/user")
+
+    async def get_rate_limit(self) -> dict:
+        """Fetch GitHub API rate limit status."""
+        return await self._request("GET", "/rate_limit")
+
+    async def list_user_repos(self, sort: str = "updated", per_page: int = 30) -> list[dict]:
+        """List repositories accessible to the authenticated user."""
+        try:
+            return await self._request("GET", f"/user/repos?sort={sort}&per_page={per_page}")
+        except Exception:
+            return []
+
+    async def list_repo_pulls(self, repo: str, state: str = "open", per_page: int = 30) -> list[dict]:
+        """List pull requests for a given repository."""
+        return await self._request("GET", f"/repos/{repo}/pulls?state={state}&sort=updated&per_page={per_page}")
+
+    async def create_commit_status(self, repo: str, sha: str, state: str, description: str,
+                                   context: str = "CodeSentinel / Quality Gate", target_url: Optional[str] = None) -> dict:
+        """Set a GitHub commit status check (pending, success, failure)."""
+        self._require_write_access("create commit statuses")
+        payload = {
+            "state": state,
+            "description": description[:140],
+            "context": context,
+        }
+        if target_url:
+            payload["target_url"] = target_url
+        return await self._request("POST", f"/repos/{repo}/statuses/{sha}", json=payload)
+
+    async def create_issue(self, repo: str, title: str, body: str, labels: Optional[list[str]] = None) -> dict:
+        """Create a GitHub issue on the target repository."""
+        self._require_write_access("create issues")
+        payload = {
+            "title": title,
+            "body": body,
+        }
+        if labels:
+            payload["labels"] = labels
+        return await self._request("POST", f"/repos/{repo}/issues", json=payload)
+
 
 def changed_lines_from_patch(patch: Optional[str]) -> Optional[list[int]]:
     """Read the new-file line numbers touched by a unified-diff patch."""

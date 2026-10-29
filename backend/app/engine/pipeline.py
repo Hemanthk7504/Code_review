@@ -176,6 +176,12 @@ async def process_pull_request(repo: str, pr_number: Optional[int] = None, token
         _notify("Skipped", 100, "PR branch was created by CodeSentinel bot; skipping review.")
         return {"skipped": "This PR was created by the review bot."}
 
+    if gh.token:
+        try:
+            await gh.create_commit_status(repo, head_sha, "pending", "CodeSentinel AI review in progress...")
+        except Exception:
+            pass
+
     _notify("Fetching Files", 20, "Extracting modified files and patch diffs...")
     files: list[FileInput] = []
     shas: dict[str, str] = {}
@@ -329,6 +335,14 @@ async def process_pull_request(repo: str, pr_number: Optional[int] = None, token
                 log.error("Failed to create revision branch or PR: %s", write_err)
                 full.notes.append(f"Failed to submit revision PR: {write_err}")
                 _notify("Complete with Warning", 100, f"Review succeeded, but revision PR creation failed: {write_err}")
+
+        if gh.token:
+            try:
+                status_state = "failure" if full.review.summary.overall_risk >= 70 else "success"
+                status_desc = f"Grade {full.review.summary.posture_grade} ({full.review.summary.overall_risk:.1f}/100) · {len(verified)} flaw(s)"
+                await gh.create_commit_status(repo, head_sha, status_state, status_desc, target_url=result.get("revision_pr"))
+            except Exception:
+                pass
     else:
         _notify("Complete", 100, f"Review completed with {len(verified)} verified findings (PR creation disabled).")
 

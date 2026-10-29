@@ -6,9 +6,161 @@
 const JobsController = {
   activeJobId: null,
   pollTimer: null,
+  githubUser: null,
+  activeRepos: [],
+  selectedRepo: 'Hemanthk7504/Code_review',
 
   init() {
     this.renderJobsTable();
+    this.initGitHubIntegration();
+  },
+
+  async initGitHubIntegration() {
+    try {
+      const user = await API.getGitHubUser();
+      const statusCard = document.getElementById('gh-connection-card');
+      const userAvatar = document.getElementById('gh-user-avatar');
+      const userName = document.getElementById('gh-user-name');
+      const userHandle = document.getElementById('gh-user-handle');
+      const rateQuota = document.getElementById('gh-rate-quota');
+
+      if (user && user.connected) {
+        this.githubUser = user;
+        if (statusCard) statusCard.style.display = 'flex';
+        if (userAvatar) userAvatar.src = user.avatar_url || '/static/img/avatar.png';
+        if (userName) userName.innerText = user.name || user.login;
+        if (userHandle) userHandle.innerText = `@${user.login} (${user.public_repos || 0} public, ${user.total_private_repos || 0} private repos)`;
+        if (rateQuota && user.rate_limit) {
+          rateQuota.innerText = `${user.rate_limit.remaining} / ${user.rate_limit.limit} requests`;
+        }
+        await this.loadRepos();
+      } else {
+        if (statusCard) {
+          statusCard.style.display = 'flex';
+          const indicator = document.getElementById('gh-status-indicator');
+          if (indicator) {
+            indicator.className = 'badge badge-warning';
+            indicator.innerText = 'Token Needed';
+          }
+          if (userHandle) userHandle.innerText = 'Configure GITHUB_TOKEN in .env or Settings for full live sync';
+        }
+        await this.loadRepos();
+      }
+    } catch (err) {
+      console.warn('GitHub integration check error:', err);
+    }
+  },
+
+  async loadRepos() {
+    const selectEl = document.getElementById('gh-repo-select');
+    if (!selectEl) return;
+    try {
+      const res = await API.listGitHubRepos();
+      let repos = res && res.repos && res.repos.length > 0 ? res.repos : [];
+      if (!repos.some(r => r.full_name === 'Hemanthk7504/Code_review')) {
+        repos.unshift({
+          full_name: 'Hemanthk7504/Code_review',
+          name: 'Code_review',
+          language: 'Python',
+          private: false,
+          description: 'Autonomous AI Code Review & Remediation Platform'
+        });
+      }
+      this.activeRepos = repos;
+      selectEl.innerHTML = repos.map(r => `
+        <option value="${r.full_name}" ${r.full_name === this.selectedRepo ? 'selected' : ''}>
+          ${r.full_name} (${r.language || 'Code'}) ${r.private ? '🔒' : '🌐'}
+        </option>
+      `).join('');
+
+      await this.loadLivePullRequests(this.selectedRepo);
+    } catch (err) {
+      console.error('Failed to load GitHub repos:', err);
+    }
+  },
+
+  async onRepoChange(repoName) {
+    this.selectedRepo = repoName;
+    const inputEl = document.getElementById('pr-repo-input');
+    if (inputEl) inputEl.value = repoName;
+    await this.loadLivePullRequests(repoName);
+  },
+
+  async loadLivePullRequests(repoName) {
+    const target = repoName || this.selectedRepo;
+    const container = document.getElementById('live-prs-container');
+    const loadingEl = document.getElementById('live-prs-loading');
+    if (!container) return;
+
+    if (loadingEl) loadingEl.style.display = 'block';
+    container.innerHTML = '';
+
+    const parts = target.split('/');
+    if (parts.length !== 2) return;
+    const [owner, name] = parts;
+
+    try {
+      const res = await API.listRepoPulls(owner, name, 'open');
+      if (loadingEl) loadingEl.style.display = 'none';
+
+      const pulls = res && res.pulls ? res.pulls : [];
+      if (pulls.length === 0) {
+        container.innerHTML = `
+          <div style="text-align: center; padding: 24px; color: var(--color-text-muted);">
+            No open pull requests found for <strong>${target}</strong>.
+          </div>
+        `;
+        return;
+      }
+
+      container.innerHTML = pulls.map(pr => {
+        const timeAgo = new Date(pr.created_at).toLocaleDateString();
+        const safeTitle = String(pr.title).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        return `
+          <div class="card" style="margin-bottom: 12px; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-md); transition: var(--transition-fast); flex-wrap: wrap; gap: 12px;">
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <img src="${pr.user.avatar_url || '/static/img/avatar.png'}" style="width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--color-border);" />
+              <div>
+                <div style="font-weight: 600; font-size: var(--text-sm); display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                  <span style="color: var(--color-primary); font-family: var(--font-mono); font-weight: 700;">#${pr.number}</span>
+                  <span>${safeTitle}</span>
+                  ${pr.draft ? '<span class="badge badge-neutral" style="font-size: 10px;">Draft</span>' : '<span class="badge badge-verified" style="font-size: 10px;">Open</span>'}
+                </div>
+                <div style="color: var(--color-text-muted); font-size: var(--text-xs); margin-top: 3px;">
+                  by <strong>@${pr.user.login}</strong> · <code>${pr.head.ref}</code> → <code>${pr.base.ref}</code> · Created ${timeAgo}
+                </div>
+              </div>
+            </div>
+            <div style="display: flex; gap: 8px;">
+              <a href="${pr.html_url}" target="_blank" class="btn btn-sm btn-secondary" style="font-size: 12px;">GitHub ↗</a>
+              <button class="btn btn-sm btn-primary" onclick="JobsController.quickLaunchReview('${target}', ${pr.number})" style="font-size: 12px;">
+                ⚡ 1-Click Review
+              </button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    } catch (err) {
+      if (loadingEl) loadingEl.style.display = 'none';
+      container.innerHTML = `
+        <div style="padding: 16px; color: var(--color-text-muted); font-size: var(--text-xs);">
+          Could not fetch live PRs for ${target}: ${err.message}.
+        </div>
+      `;
+    }
+  },
+
+  quickLaunchReview(repo, prNumber) {
+    const repoInput = document.getElementById('pr-repo-input');
+    const numberInput = document.getElementById('pr-number-input');
+    if (repoInput) repoInput.value = repo;
+    if (numberInput) numberInput.value = prNumber;
+    App.showToast('Launching Review', `Starting automated review on ${repo} #${prNumber}...`, 'info');
+    this.submitPR();
+    setTimeout(() => {
+      const tracker = document.getElementById('active-job-card');
+      if (tracker) tracker.scrollIntoView({ behavior: 'smooth' });
+    }, 300);
   },
 
   async submitPR(e) {
