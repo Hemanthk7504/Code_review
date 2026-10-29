@@ -145,10 +145,13 @@ class LLMClient:
             return None
 
         self.total_requests += 1
+        # Reasoning models (like Nemotron) generate internal thoughts first (~200-500 tokens).
+        # Ensure at least 2048 max_tokens so completions don't truncate before outputting content.
+        effective_max_tokens = max(max_tokens, 2048)
         payload = {
             "model": s.llm_model,
             "temperature": s.llm_temperature,
-            "max_tokens": max_tokens,
+            "max_tokens": effective_max_tokens,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         }
         headers = {"Authorization": f"Bearer {s.effective_llm_api_key}", "Content-Type": "application/json"}
@@ -171,18 +174,42 @@ class LLMClient:
                                 continue
                         r.raise_for_status()
 
-                    resp_data = r.json()
-                    choices = resp_data.get("choices", [])
-                    if not choices:
+                    resp_data = r.json() if isinstance(r.json(), dict) else {}
+                    choices = resp_data.get("choices") or []
+                    if not choices or not isinstance(choices, list):
                         raise ValueError("No choices returned from LLM completion.")
-                    raw_content = choices[0].get("message", {}).get("content", "")
+
+                    choice = choices[0] if isinstance(choices[0], dict) else {}
+                    msg = choice.get("message") or {}
+                    if not isinstance(msg, dict):
+                        msg = {}
+
+                    raw_content = msg.get("content")
+                    reasoning_content = msg.get("reasoning_content")
+
+                    # Handle null, string, or multipart array formats safely
+                    if raw_content is None:
+                        raw_content = ""
+                    elif isinstance(raw_content, list):
+                        raw_content = "".join(part.get("text", "") for part in raw_content if isinstance(part, dict))
+                    elif not isinstance(raw_content, str):
+                        raw_content = str(raw_content)
+
+                    if reasoning_content is None or not isinstance(reasoning_content, str):
+                        reasoning_content = ""
+
+                    # Extract JSON from primary content; fallback to reasoning_content if needed
                     parsed = extract_json(raw_content)
+                    if parsed is None and reasoning_content:
+                        parsed = extract_json(reasoning_content)
+
                     if parsed is not None:
                         self.successful_requests += 1
                         self.consecutive_failures = 0
                         return parsed
 
-                    log.warning("LLM task '%s' returned non-JSON content: %s", task, raw_content[:200])
+                    preview = (raw_content or reasoning_content or "")[:200]
+                    log.warning("LLM task '%s' returned non-JSON content: %s", task, preview)
                     # If parsing failed, retry if attempts remain
                     if attempt < max_attempts:
                         self.retried_requests += 1
@@ -197,26 +224,30 @@ class LLMClient:
                                     task, net_err, backoff, attempt, max_attempts)
                         await asyncio.sleep(backoff)
                         continue
-                    self._record_failure(f"Network/timeout error: {net_err}", task)
+                    self._record_failure(f"Network/timeout error: {net_err}", task, is_infra_error=True)
+                    return None
+                except httpx.HTTPStatusError as http_err:
+                    self._record_failure(f"HTTP error {http_err.response.status_code}", task, is_infra_error=True)
                     return None
                 except Exception as exc:
-                    self._record_failure(str(exc), task)
+                    self._record_failure(str(exc), task, is_infra_error=False)
                     return None
 
-        self._record_failure(f"Failed after {max_attempts} attempts", task)
+        self._record_failure(f"Failed after {max_attempts} attempts", task, is_infra_error=False)
         return None
 
-    def _record_failure(self, err_msg: str, task: str) -> None:
+    def _record_failure(self, err_msg: str, task: str, *, is_infra_error: bool = False) -> None:
         self.failed_requests += 1
-        self.consecutive_failures += 1
         self.last_error = f"Task '{task}': {err_msg}"
         self.last_error_time = time.time()
-        log.warning("LLM call failed for task '%s': %s (consecutive failures: %d)",
-                    task, err_msg, self.consecutive_failures)
-        # Only trip circuit breaker after 3 consecutive failure cascades
-        if self.consecutive_failures >= 3:
-            self._circuit_broken_until = time.time() + 30.0
-            log.error("Tripping LLM circuit breaker for 30s after %d consecutive failures.", self.consecutive_failures)
+        log.warning("LLM call failed for task '%s': %s (infra=%s)",
+                    task, err_msg, is_infra_error)
+        # Only trip circuit breaker on persistent infrastructure / network / auth failures
+        if is_infra_error:
+            self.consecutive_failures += 1
+            if self.consecutive_failures >= 4:
+                self._circuit_broken_until = time.time() + 30.0
+                log.error("Tripping LLM circuit breaker for 30s after %d consecutive infra failures.", self.consecutive_failures)
 
 
 llm_client = LLMClient()

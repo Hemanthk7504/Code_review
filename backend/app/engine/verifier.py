@@ -83,7 +83,7 @@ async def _verify_one(f: Finding, content: str) -> None:
             f"Static sources claiming this: {', '.join(f.static_sources) if f.static_sources else 'None'}\n\n"
             f"Code around the reported line:\n{_window(lines, f.line, 15)}\n\n"
             f"If you need more context, this is the whole file:\n{numbered(content)}")
-    data = await llm_client.chat_json(VERIFIER_SYSTEM, user, task="verify", max_tokens=400)
+    data = await llm_client.chat_json(VERIFIER_SYSTEM, user, task="verify", max_tokens=2048)
     if not isinstance(data, dict):
         # Fallback to evidence check if LLM response unavailable
         if ev_verdict == "confirmed" or (f.static_sources and snippet_ok):

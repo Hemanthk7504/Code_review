@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     llm_api_key: str = ""
     nvidia_api_key: str = ""
     llm_model: str = "nvidia/nemotron-3.5-lightning-30b-a3b"
-    llm_timeout: float = 120.0
+    llm_timeout: float = 60.0
     llm_temperature: float = 0.1
-    llm_concurrency: int = 4
+    llm_concurrency: int = 2
     max_file_chars: int = 60000
 
     # GitHub
