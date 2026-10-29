@@ -3,7 +3,7 @@ Static Scanners + Multi-Agent AI Specialists -> Consolidation -> Risk Scoring ->
 """
 import asyncio
 import logging
-from typing import Tuple
+from typing import Callable, Optional, Tuple
 
 from .agents import run_all_agents
 from .consolidation import consolidate
@@ -23,21 +23,16 @@ def is_python(path: str) -> bool:
     return info.language == Language.PYTHON
 
 
-async def _analyze_one(f: FileInput) -> list[Finding]:
+async def _static_scan_one(f: FileInput) -> list[Finding]:
     info = detect_language(f.path, f.content)
-    static_findings: list[Finding] = []
-
     if info.language == Language.PYTHON:
-        static_findings = await analyze_file(f.path, f.content)
+        return await analyze_file(f.path, f.content)
     elif info.is_supported:
-        static_findings = scan_multilingual_file(f.path, f.content)
-
-    # Dispatched AI specialist agents (Security, Logic Bug, Quality, Performance)
-    ai_findings = await run_all_agents(f.path, f.content, static_findings)
-    return static_findings + ai_findings
+        return scan_multilingual_file(f.path, f.content)
+    return []
 
 
-async def analyze_files(files: list[FileInput]) -> Tuple[list[Finding], list[str]]:
+async def analyze_files(files: list[FileInput], on_progress: Optional[Callable[[str, int, str], None]] = None) -> Tuple[list[Finding], list[str]]:
     """Analyze source files across supported programming languages.
 
     Returns:
@@ -56,9 +51,25 @@ async def analyze_files(files: list[FileInput]) -> Tuple[list[Finding], list[str
     if not supported_files:
         return [], skipped_files
 
-    groups = await asyncio.gather(*(_analyze_one(f) for f in supported_files))
-    raw = [x for g in groups for x in g]
+    if on_progress:
+        on_progress("Static SAST", 35, f"Running Bandit SAST, Pylint AST, and Radon on {len(supported_files)} file(s)...")
+
+    static_groups = await asyncio.gather(*(_static_scan_one(f) for f in supported_files))
+
+    if on_progress:
+        on_progress("AI Specialists", 50, f"Dispatching cognitive specialist agents (Security, Bug, Quality) across {len(supported_files)} file(s)...")
+
+    ai_groups = await asyncio.gather(*(run_all_agents(f.path, f.content, sf) for f, sf in zip(supported_files, static_groups)))
+    raw = [x for g in list(static_groups) + list(ai_groups) for x in g]
+
+    if on_progress:
+        on_progress("Consolidating", 60, f"Corroborating findings across engines and applying CVSS/CWE risk scores...")
+
     merged = consolidate(raw)
     apply_risk(merged, supported_files)
+
+    if on_progress:
+        on_progress("Self-Verify", 70, f"Skeptical verification: auditing {len(merged)} claim(s) against AST context...")
+
     await verify_findings(merged, {f.path: f.content for f in supported_files})
     return merged, skipped_files

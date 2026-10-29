@@ -3,7 +3,7 @@ import asyncio
 import logging
 import re
 from collections import Counter
-from typing import Optional
+from typing import Callable, Optional
 from uuid import uuid4
 
 from .analysis import analyze_files
@@ -39,14 +39,14 @@ def _summary(files_analyzed: int, findings) -> ReviewSummary:
         top_risks=extract_top_risks(findings, limit=3))
 
 
-async def review_files(files: list[FileInput]) -> ReviewResult:
-    findings, skipped = await analyze_files(files)
+async def review_files(files: list[FileInput], on_progress: Optional[Callable[[str, int, str], None]] = None) -> ReviewResult:
+    findings, skipped = await analyze_files(files, on_progress=on_progress)
     analyzed_count = len(files) - len(skipped)
     return ReviewResult(summary=_summary(analyzed_count, findings), findings=findings, skipped_files=skipped)
 
 
-async def review_and_revise(files: list[FileInput]) -> FullResult:
-    review = await review_files(files)
+async def review_and_revise(files: list[FileInput], on_progress: Optional[Callable[[str, int, str], None]] = None) -> FullResult:
+    review = await review_files(files, on_progress=on_progress)
     notes: list[str] = []
     contents = {f.path: f.content for f in files}
     verified = [f for f in review.findings if f.verification == VerificationStatus.verified]
@@ -56,6 +56,9 @@ async def review_and_revise(files: list[FileInput]) -> FullResult:
     if not llm_client.enabled:
         notes.append("LLM is off, so no revised code was generated (static review only).")
         return FullResult(review=review, notes=notes)
+
+    if on_progress:
+        on_progress("Fix Synthesis", 80, f"Synthesizing verified remediation and automated tests for {len(verified)} issue(s)...")
 
     revisions = await generate_revisions(contents, verified)
     if not revisions:
@@ -218,11 +221,11 @@ async def process_pull_request(repo: str, pr_number: Optional[int] = None, token
                 pass
         return {"files": 0, "skipped_files": skipped_items, "summary": None, "notes": [no_files_msg]}
 
-    _notify("Static & AI Scan", 35, f"Analyzing {len(files)} file(s) with multi-language engines and verification...")
-    full = await review_and_revise(files)
+    _notify("Static SAST", 35, f"Starting multi-engine analysis across {len(files)} file(s)...")
+    full = await review_and_revise(files, on_progress=_notify)
     full.review.skipped_files.extend([s for s in skipped_items if s not in full.review.skipped_files])
 
-    _notify("Consolidated Findings", 60, f"Identified {len(full.review.findings)} finding(s) (CVSS: {full.review.summary.overall_risk:.1f}, Grade: {full.review.summary.posture_grade}).")
+    _notify("Consolidated Findings", 75, f"Identified {len(full.review.findings)} finding(s) (CVSS: {full.review.summary.overall_risk:.1f}, Grade: {full.review.summary.posture_grade}).")
 
     if gh.token:
         rich_body = review_comment(full.review, files=files, pr_number=pr_number)
@@ -277,13 +280,13 @@ async def process_pull_request(repo: str, pr_number: Optional[int] = None, token
         else:
             base_ref = pr.get("base", {}).get("ref", "main")
             branch = f"{s.bot_branch_prefix}pr-{pr_number}-{uuid4().hex[:6]}"
-            _notify("Creating Branch", 85, f"Creating isolated fix branch '{branch}' from commit {head_sha[:7]}...")
+            _notify("Creating Branch", 88, f"Creating isolated fix branch '{branch}' from commit {head_sha[:7]}...")
             try:
                 await gh.create_branch(repo, branch, head_sha)
                 if accepted:
                     for o in accepted:
                         file_sha = shas.get(o.revision.path)
-                        _notify("Committing Fixes", 90, f"Committing remediated code to {o.revision.path}...")
+                        _notify("Committing Fixes", 93, f"Committing remediated code to {o.revision.path}...")
                         await gh.commit_file(
                             repo, o.revision.path, o.revision.revised_code,
                             f"CodeSentinel review: fix verified security & bug defects in {o.revision.path}",
@@ -293,7 +296,7 @@ async def process_pull_request(repo: str, pr_number: Optional[int] = None, token
                     title = f"🤖 Automated Security & Bug Fixes for #{pr_number}"
                 else:
                     # Compulsory PR Creation: Hardening & Companion Tests
-                    _notify("Generating Hardening", 90, f"Generating companion tests and code hardening for PR #{pr_number}...")
+                    _notify("Generating Hardening", 93, f"Generating companion tests and code hardening for PR #{pr_number}...")
                     files_cleaned: list[str] = []
                     for f_inp in files:
                         orig = f_inp.content
@@ -318,7 +321,7 @@ async def process_pull_request(repo: str, pr_number: Optional[int] = None, token
                     body = _verification_pr_body(full.review, pr_number, companion_path, files_cleaned)
                     result["revisions_accepted"] = 1
 
-                _notify("Opening PR", 95, f"Dispatching separate revision Pull Request...")
+                _notify("Open PR", 97, f"Publishing separate revision Pull Request...")
                 try:
                     new_pr = await gh.create_pull(repo, title, branch, head_ref, body)
                 except Exception as err:
@@ -326,7 +329,7 @@ async def process_pull_request(repo: str, pr_number: Optional[int] = None, token
                     new_pr = await gh.create_pull(repo, title, branch, base_ref, body)
 
                 result["revision_pr"] = new_pr.get("html_url")
-                _notify("Complete", 100, f"Opened separate automated revision Pull Request: {new_pr.get('html_url')}")
+                _notify("Open PR", 100, f"Opened separate automated revision Pull Request: {new_pr.get('html_url')}")
                 try:
                     await gh.comment(repo, pr_number, f"🤖 A separate revision PR with verified fixes/companion tests was opened: {new_pr.get('html_url')}")
                 except Exception:

@@ -105,16 +105,18 @@ async def run_agent(agent: str, path: str, content: str, static_findings: list[F
 
 
 async def run_all_agents(path: str, content: str, static_findings: list[Finding]) -> list[Finding]:
-    """Run all active specialist agents in parallel on one file."""
+    """Run active specialist agents in parallel on one file."""
     if not llm_client.enabled:
         return []
     s = get_settings()
-    active_agents = ["bug_detection", "security_analysis", "code_quality", "refactoring"]
-    if getattr(s, "enable_performance_agent", True):
+    active_agents = ["bug_detection", "security_analysis", "code_quality"]
+    if getattr(s, "enable_refactoring_agent", False):
+        active_agents.append("refactoring")
+    if getattr(s, "enable_performance_agent", False):
         active_agents.append("performance")
-    if getattr(s, "enable_test_coverage_agent", True):
+    if getattr(s, "enable_test_coverage_agent", False):
         active_agents.append("test_coverage")
-    if getattr(s, "enable_architecture_agent", True):
+    if getattr(s, "enable_architecture_agent", False):
         active_agents.append("architecture")
 
     results = await asyncio.gather(*(run_agent(a, path, content, static_findings) for a in active_agents))

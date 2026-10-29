@@ -145,24 +145,26 @@ class LLMClient:
             return None
 
         self.total_requests += 1
-        # Reasoning models (like Nemotron) generate internal thoughts first (~200-500 tokens).
-        # Ensure at least 2048 max_tokens so completions don't truncate before outputting content.
-        effective_max_tokens = max(max_tokens, 2048)
+        effective_max_tokens = min(max_tokens, 2048) if max_tokens else 1500
         payload = {
             "model": s.llm_model,
             "temperature": s.llm_temperature,
             "max_tokens": effective_max_tokens,
             "messages": [{"role": "system", "content": system}, {"role": "user", "content": user}],
         }
+        # Disable verbose reasoning tokens on Nemotron/NIM for rapid, deterministic JSON generation
+        if "nemotron" in s.llm_model.lower() or "nvidia" in s.llm_base_url.lower():
+            payload["chat_template_kwargs"] = {"thinking": False}
+
         headers = {"Authorization": f"Bearer {s.effective_llm_api_key}", "Content-Type": "application/json"}
         url = s.llm_base_url.rstrip("/") + "/chat/completions"
-        timeout = s.llm_timeout
+        client_timeout = httpx.Timeout(connect=15.0, read=max(60.0, s.llm_timeout), write=15.0, pool=15.0)
 
-        max_attempts = 3
+        max_attempts = 2
         async with self._semaphore():
             for attempt in range(1, max_attempts + 1):
                 try:
-                    async with httpx.AsyncClient(timeout=timeout) as client:
+                    async with httpx.AsyncClient(timeout=client_timeout) as client:
                         r = await client.post(url, headers=headers, json=payload)
                         if r.status_code == 429 or r.status_code >= 500:
                             if attempt < max_attempts:
